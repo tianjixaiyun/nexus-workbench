@@ -6,6 +6,42 @@
 
 -- ---------- 任务表 ----------
 -- 作品集(个人网站对外展示的作品)
+-- 碎碎念(时间线速记)
+create table if not exists memos (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null default auth.uid() references auth.users (id) on delete cascade,
+  content text not null default '',
+  tags jsonb not null default '[]'::jsonb,
+  pinned boolean not null default false,
+  created_at timestamptz not null default now()
+);
+alter table memos enable row level security;
+create policy "memos 属于当前用户" on memos for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
+
+-- 记账
+create table if not exists expenses (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null default auth.uid() references auth.users (id) on delete cascade,
+  kind text not null default 'expense',
+  amount numeric not null default 0,
+  category text not null default '',
+  note text not null default '',
+  date date not null default current_date,
+  created_at timestamptz not null default now()
+);
+alter table expenses enable row level security;
+create policy "expenses 属于当前用户" on expenses for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
+
+do $$
+begin
+  if not exists (select 1 from pg_publication_tables where publication_name = 'supabase_realtime' and tablename = 'memos') then
+    alter publication supabase_realtime add table memos;
+  end if;
+  if not exists (select 1 from pg_publication_tables where publication_name = 'supabase_realtime' and tablename = 'expenses') then
+    alter publication supabase_realtime add table expenses;
+  end if;
+end $$;
+
 create table if not exists works (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null default auth.uid() references auth.users (id) on delete cascade,

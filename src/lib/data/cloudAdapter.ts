@@ -16,6 +16,10 @@ import type {
   Task,
   WorkItem,
   NewWork,
+  Memo,
+  NewMemo,
+  Expense,
+  NewExpense,
 } from './types'
 import { supabase } from '../config'
 
@@ -135,6 +139,38 @@ const fromNoteRow = (r: Row): Note => ({
   deletedAt: (r.deleted_at as string | null) ?? null,
   createdAt: r.created_at as string,
   updatedAt: r.updated_at as string,
+})
+
+const memoRow = (m: Partial<Memo>): Row => ({
+  content: m.content ?? '',
+  tags: JSON.stringify(m.tags ?? []),
+  pinned: m.pinned ?? false,
+})
+
+const fromMemoRow = (r: Row): Memo => ({
+  id: String(r.id),
+  content: (r.content as string) ?? '',
+  tags: safeParseImages(r.tags as string | string[] | null),
+  pinned: Boolean(r.pinned),
+  createdAt: (r.created_at as string) ?? '',
+})
+
+const expenseRow = (e: Partial<Expense>): Row => ({
+  kind: e.kind ?? 'expense',
+  amount: e.amount ?? 0,
+  category: e.category ?? '',
+  note: e.note ?? '',
+  date: e.date ?? '',
+})
+
+const fromExpenseRow = (r: Row): Expense => ({
+  id: String(r.id),
+  kind: (r.kind as Expense['kind']) ?? 'expense',
+  amount: Number(r.amount) || 0,
+  category: (r.category as string) ?? '',
+  note: (r.note as string) ?? '',
+  date: (r.date as string) ?? '',
+  createdAt: (r.created_at as string) ?? '',
 })
 
 const workRow = (w: Partial<WorkItem>): Row => ({
@@ -257,4 +293,6 @@ export const cloudAdapter: DataAdapter = {
   dailies: makeCloudStore<Daily, NewDaily>('dailies', 'created_at', dailyRow, fromDailyRow),
   goals: makeCloudStore<Goal, NewGoal>('goals', 'created_at', goalRow, fromGoalRow),
   works: makeCloudStore<WorkItem, NewWork>('works', 'created_at', workRow, fromWorkRow),
+  memos: makeCloudStore<Memo, NewMemo>('memos', 'created_at', memoRow, fromMemoRow),
+  expenses: makeCloudStore<Expense, NewExpense>('expenses', 'created_at', expenseRow, fromExpenseRow),
 }

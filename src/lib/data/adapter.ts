@@ -15,6 +15,10 @@ import type {
   Task,
   WorkItem,
   NewWork,
+  Memo,
+  NewMemo,
+  Expense,
+  NewExpense,
 } from './types'
 
 /** 单个实体的通用增删改查接口 */
@@ -39,4 +43,6 @@ export interface DataAdapter {
   dailies: EntityStore<Daily, NewDaily>
   goals: EntityStore<Goal, NewGoal>
   works: EntityStore<WorkItem, NewWork>
+  memos: EntityStore<Memo, NewMemo>
+  expenses: EntityStore<Expense, NewExpense>
 }

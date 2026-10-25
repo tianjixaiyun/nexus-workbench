@@ -14,6 +14,10 @@ import type {
   NewNote,
   NewTask,
   NewWork,
+  NewMemo,
+  NewExpense,
+  Memo,
+  Expense,
   Note,
   Task,
   WorkItem,
@@ -32,6 +36,8 @@ const db = new Dexie(DB_NAME) as Dexie & {
   dailies: EntityTable<Daily, 'id'>
   goals: EntityTable<Goal, 'id'>
   works: EntityTable<WorkItem, 'id'>
+  memos: EntityTable<Memo, 'id'>
+  expenses: EntityTable<Expense, 'id'>
 }
 
 // v2:新增 habits / milestones 表;v3:新增 dailies(每日心情)表;v4:新增 goals 表(旧表结构沿用)
@@ -141,6 +147,50 @@ const notes: EntityStore<Note, NewNote> = {
   },
 }
 
+const memos: EntityStore<Memo, NewMemo> = {
+  async list() {
+    const all = await db.memos.toArray()
+    return all.map(normalizeMemo).sort((a, b) => (a.pinned === b.pinned ? (a.createdAt < b.createdAt ? 1 : -1) : a.pinned ? -1 : 1))
+  },
+  async create(input: NewMemo) {
+    const memo = normalizeMemo(input)
+    const item: Memo = { ...memo, id: uid(), createdAt: nowIso() }
+    await db.memos.add(item)
+    return item
+  },
+  async update(id, patch) {
+    await db.memos.update(id, patch as UpdateSpec<Memo>)
+    const memo = await db.memos.get(id)
+    if (!memo) throw new Error('碎碎念不存在')
+    return normalizeMemo(memo)
+  },
+  async remove(id) {
+    await db.memos.delete(id)
+  },
+}
+
+const expenses: EntityStore<Expense, NewExpense> = {
+  async list() {
+    const all = await db.expenses.toArray()
+    return all.map(normalizeExpense).sort((a, b) => (a.date === b.date ? (a.createdAt < b.createdAt ? 1 : -1) : a.date < b.date ? 1 : -1))
+  },
+  async create(input: NewExpense) {
+    const e = normalizeExpense(input)
+    const item: Expense = { ...e, id: uid(), createdAt: nowIso() }
+    await db.expenses.add(item)
+    return item
+  },
+  async update(id, patch) {
+    await db.expenses.update(id, patch as UpdateSpec<Expense>)
+    const e = await db.expenses.get(id)
+    if (!e) throw new Error('记录不存在')
+    return normalizeExpense(e)
+  },
+  async remove(id) {
+    await db.expenses.delete(id)
+  },
+}
+
 const works: EntityStore<WorkItem, NewWork> = {
   async list() {
     const all = await db.works.toArray()
@@ -162,6 +212,28 @@ const works: EntityStore<WorkItem, NewWork> = {
   async remove(id) {
     await db.works.delete(id)
   },
+}
+
+function normalizeMemo(m: Partial<Memo>): Memo {
+  return {
+    id: m.id ?? '',
+    content: m.content ?? '',
+    tags: Array.isArray(m.tags) ? m.tags : [],
+    pinned: m.pinned ?? false,
+    createdAt: m.createdAt ?? nowIso(),
+  }
+}
+
+function normalizeExpense(e: Partial<Expense>): Expense {
+  return {
+    id: e.id ?? '',
+    kind: e.kind === 'income' ? 'income' : 'expense',
+    amount: typeof e.amount === 'number' && Number.isFinite(e.amount) ? e.amount : 0,
+    category: e.category ?? '其他',
+    note: e.note ?? '',
+    date: e.date ?? nowIso().slice(0, 10),
+    createdAt: e.createdAt ?? nowIso(),
+  }
 }
 
 function normalizeWork(w: Partial<WorkItem>): WorkItem {
@@ -325,10 +397,16 @@ const goals: EntityStore<Goal, NewGoal> = {
   },
 }
 
+// v6:新增 memos(碎碎念)/ expenses(记账)表
+db.version(6).stores({
+  memos: 'id, createdAt, pinned',
+  expenses: 'id, date, kind',
+})
+
 // v5:新增 works(作品集)表
 db.version(5).stores({
   works: 'id, createdAt',
 })
 
-export const localAdapter: DataAdapter = { tasks, notes, links, habits, milestones, dailies, goals, works }
+export const localAdapter: DataAdapter = { tasks, notes, links, habits, milestones, dailies, goals, works, memos, expenses }
 export { LOCAL_USER_ID, db }

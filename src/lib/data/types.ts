@@ -193,3 +193,46 @@ export interface WorkItem {
 }
 
 export type NewWork = Omit<WorkItem, 'id' | 'createdAt'>
+
+/** 碎碎念:flomo/Memos 式时间线速记 */
+export interface Memo {
+  id: string
+  content: string
+  tags: string[]
+  pinned: boolean
+  createdAt: string
+}
+
+export type NewMemo = Omit<Memo, 'id' | 'createdAt'>
+
+/** 记账条目 */
+export interface Expense {
+  id: string
+  kind: 'expense' | 'income'
+  amount: number
+  category: string
+  note: string
+  date: string
+  createdAt: string
+}
+
+export type NewExpense = Omit<Expense, 'id' | 'createdAt'>
+
+export const EXPENSE_CATEGORIES = [
+  { value: '餐饮', emoji: '🍜' },
+  { value: '交通', emoji: '🚇' },
+  { value: '购物', emoji: '🛍️' },
+  { value: '居住', emoji: '🏠' },
+  { value: '娱乐', emoji: '🎮' },
+  { value: '医疗', emoji: '💊' },
+  { value: '学习', emoji: '📚' },
+  { value: '其他', emoji: '📦' },
+] as const
+
+export const INCOME_CATEGORIES = [
+  { value: '工资', emoji: '💼' },
+  { value: '奖金', emoji: '🏆' },
+  { value: '副业', emoji: '✨' },
+  { value: '理财', emoji: '📈' },
+  { value: '其他', emoji: '🎁' },
+] as const

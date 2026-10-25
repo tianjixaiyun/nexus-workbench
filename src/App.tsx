@@ -4,6 +4,9 @@ import LandingPage from '@/pages/LandingPage'
 import PortfolioPage from '@/pages/PortfolioPage'
 import AchievementsPage from '@/pages/AchievementsPage'
 import ScrapbookPage from '@/pages/ScrapbookPage'
+import MemosPage from '@/pages/MemosPage'
+import ExpensePage from '@/pages/ExpensePage'
+import { PinGuard } from '@/components/fx/PinGuard'
 import { CustomCursor } from '@/components/fx/CustomCursor'
 import DashboardPage from '@/pages/DashboardPage'
 import TasksPage from '@/pages/TasksPage'
@@ -28,6 +31,7 @@ export default function App() {
       <BurstHost />
       <DiveIntro />
       <CustomCursor />
+      <PinGuard />
       <AchievementWatcher />
       <Routes>
         <Route path="/login" element={<LoginPage />} />
@@ -49,6 +53,8 @@ export default function App() {
           <Route path="sanctuary" element={<SanctuaryPage />} />
           <Route path="trash" element={<TrashPage />} />
           <Route path="achievements" element={<AchievementsPage />} />
+          <Route path="memos" element={<MemosPage />} />
+          <Route path="expense" element={<ExpensePage />} />
         </Route>
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

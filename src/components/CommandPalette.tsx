@@ -59,6 +59,9 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
     const pages: PaletteItem[] = [
       { key: 'p-/', group: '页面', label: '工作台', keywords: 'home dashboard 主页 仪表盘', icon: <LayoutDashboard size={15} />, run: () => { navigate('/home'); onClose() } },
       { key: 'p-awards', group: '页面', label: '成就收藏册', keywords: 'achievement badge 成就 徽章 图鉴', icon: <BarChart3 size={15} />, run: () => { navigate('/achievements'); onClose() } },
+      { key: 'p-memos', group: '页面', label: '碎碎念', keywords: 'memo 速记 灵感 时间线 flomo', icon: <StickyNote size={15} />, run: () => { navigate('/memos'); onClose() } },
+      { key: 'p-expense', group: '页面', label: '记账', keywords: 'expense money 记账 收支 账单', icon: <BarChart3 size={15} />, run: () => { navigate('/expense'); onClose() } },
+      { key: 'a-pin', group: '操作', label: '隐私锁 · 开启/关闭', keywords: 'pin lock 隐私 锁屏 密码', icon: <Bot size={15} />, run: () => { window.dispatchEvent(new CustomEvent('nexus:pin-setup')); onClose() } },
       { key: 'p-scrapbook', group: '页面', label: '手帐 · 海面之上', keywords: 'scrapbook 手帐 剪贴簿 留言 彩蛋', icon: <StickyNote size={15} />, run: () => { navigate('/scrapbook'); onClose() } },
       { key: 'p-portfolio', group: '页面', label: '作品集', keywords: 'portfolio works 作品 作品集 画册', icon: <Waves size={15} />, run: () => { navigate('/portfolio'); onClose() } },
       { key: 'p-ocean', group: '页面', label: '个人主页 · 数字海洋', keywords: 'ocean landing 首页 下潜 个人网站', icon: <Waves size={15} />, run: () => { navigate('/'); onClose() } },

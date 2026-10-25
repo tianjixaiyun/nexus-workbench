@@ -6,6 +6,8 @@ import { useTaskStore } from '@/stores/taskStore'
 import { useHabitStore } from '@/stores/habitStore'
 import { useGoalStore } from '@/stores/goalStore'
 import { useWorkStore } from '@/stores/workStore'
+import { useMemoStore } from '@/stores/memoStore'
+import { useExpenseStore } from '@/stores/expenseStore'
 import type { Task } from '@/lib/data/types'
 
 /**
@@ -29,6 +31,8 @@ interface Metrics {
   maxStreak: number
   goalDone: boolean
   works: number
+  memos: number
+  expenses: number
   night: boolean
 }
 
@@ -67,6 +71,8 @@ export function collectMetrics(): Metrics {
   const habits = useHabitStore.getState().habits
   const goals = useGoalStore.getState().goals
   const works = useWorkStore.getState().works
+  const memos = useMemoStore.getState().memos.length
+  const expenses = useExpenseStore.getState().expenses.length
   const doneTasks = tasks.filter((t) => t.status === 'done').length
   const focusTotal = recentSessions(90).reduce((sum, s) => sum + s.count, 0)
   const maxStreak = habits.reduce((m, h) => Math.max(m, habitStreak(h.dates ?? [])), 0)
@@ -77,7 +83,7 @@ export function collectMetrics(): Metrics {
     return tagged.length > 0 && tagged.every((t: Task) => t.status === 'done')
   })
   const hour = new Date().getHours()
-  return { doneTasks, focusTotal, maxStreak, goalDone, works: works.length, night: hour >= 23 || hour < 5 }
+  return { doneTasks, focusTotal, maxStreak, goalDone, works: works.length, memos, expenses, night: hour >= 23 || hour < 5 }
 }
 
 export const ACHIEVEMENT_DEFS: (Achievement & { test: (m: Metrics) => boolean })[] = [
@@ -90,6 +96,9 @@ export const ACHIEVEMENT_DEFS: (Achievement & { test: (m: Metrics) => boolean })
   { id: 'streak-7', icon: '⚡', name: '七日不辍', desc: '任一习惯连续打卡 7 天', test: (m) => m.maxStreak >= 7 },
   { id: 'goal-100', icon: '🎯', name: '登顶', desc: '一个目标进度达到 100%', test: (m) => m.goalDone },
   { id: 'work-1', icon: '🎨', name: '第一次展出', desc: '作品集收录第一件作品', test: (m) => m.works >= 1 },
+  { id: 'memo-1', icon: '💭', name: '第一句碎碎念', desc: '在碎碎念时间线记下第一条想法', test: (m) => m.memos >= 1 },
+  { id: 'memo-30', icon: '🫧', name: '气泡三十枚', desc: '累计记下 30 条碎碎念', test: (m) => m.memos >= 30 },
+  { id: 'expense-1', icon: '🪙', name: '第一笔账', desc: '记下第一笔收支', test: (m) => m.expenses >= 1 },
   { id: 'night', icon: '🌙', name: '深海访客', desc: '在 23:00-5:00 的深夜造访', test: (m) => m.night },
 ]
 
@@ -148,6 +157,8 @@ export function AchievementWatcher() {
     const unsubHabit = useHabitStore.subscribe(checkAchievementsNow)
     const unsubGoal = useGoalStore.subscribe(checkAchievementsNow)
     const unsubWork = useWorkStore.subscribe(checkAchievementsNow)
+    const unsubMemo = useMemoStore.subscribe(checkAchievementsNow)
+    const unsubExpense = useExpenseStore.subscribe(checkAchievementsNow)
     const timer = window.setInterval(checkAchievementsNow, 60_000)
     checkAchievementsNow()
     return () => {
@@ -155,6 +166,8 @@ export function AchievementWatcher() {
       unsubHabit()
       unsubGoal()
       unsubWork()
+      unsubMemo()
+      unsubExpense()
       clearInterval(timer)
     }
   }, [])

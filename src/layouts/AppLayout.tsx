@@ -10,6 +10,7 @@ import {
   LogOut,
   Waves,
   Award,
+  Wallet,
   Moon,
   PanelLeftClose,
   PanelLeftOpen,
@@ -37,6 +38,8 @@ import { useNoteStore } from '@/stores/noteStore'
 import { useSettingsStore } from '@/stores/settingsStore'
 import { useTaskStore } from '@/stores/taskStore'
 import { useWorkStore } from '@/stores/workStore'
+import { useMemoStore } from '@/stores/memoStore'
+import { useExpenseStore } from '@/stores/expenseStore'
 import { AssistantPanel } from '@/components/AssistantPanel'
 import { OnboardingModal } from '@/components/OnboardingModal'
 import { CommandPalette } from '@/components/CommandPalette'
@@ -54,6 +57,8 @@ const NAV_ITEMS = [
   { to: '/stats', label: '数据看板', icon: BarChart3 },
   { to: '/links', label: '工具箱', icon: Wrench },
   { to: '/trash', label: '回收站', icon: Trash2 },
+  { to: '/memos', label: '碎碎念', icon: Cloud },
+  { to: '/expense', label: '记账', icon: Wallet },
   { to: '/achievements', label: '成就', icon: Award },
   { to: '/sanctuary', label: '云鲸圣域', icon: Waves },
 ] as const
@@ -68,6 +73,8 @@ const PAGE_TITLES: Record<string, string> = {
   '/stats': '数据看板',
   '/links': '工具箱',
   '/trash': '回收站',
+  '/memos': '碎碎念',
+  '/expense': '记账',
   '/achievements': '成就',
   '/sanctuary': '云鲸圣域',
 }
@@ -114,6 +121,8 @@ export function AppLayout() {
       useDailyStore.getState(),
       useGoalStore.getState(),
       useWorkStore.getState(),
+      useMemoStore.getState(),
+      useExpenseStore.getState(),
     ] as const
     for (const s of stores) {
       if (!s.loaded) void s.fetch()
@@ -206,6 +215,8 @@ export function AppLayout() {
     useDailyStore.getState().reset()
     useGoalStore.getState().reset()
     useWorkStore.getState().reset()
+    useMemoStore.getState().reset()
+    useExpenseStore.getState().reset()
     navigate('/login', { replace: true })
   }
 
