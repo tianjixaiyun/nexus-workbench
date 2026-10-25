@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { CountUp, TiltCard } from '@/components/fx/micro'
+import { Aurora } from '@/components/fx/bits'
 import { Link, useNavigate } from 'react-router'
 import {
   CalendarClock,
@@ -222,7 +223,8 @@ export function DashboardView() {
   return (
     <div className="flex flex-col gap-5">
       {/* 问候 + 每日一句 + 时钟 */}
-      <section className="flex flex-wrap items-end justify-between gap-4">
+      <section className="relative flex flex-wrap items-end justify-between gap-4 overflow-hidden rounded-3xl border border-line-1 bg-surface-1/60 px-6 py-5">
+        <Aurora opacity={0.35} />
         <div>
           <p className="text-sm text-txt-muted">
             {new Date().toLocaleDateString('zh-CN', { year: 'numeric', month: 'long', day: 'numeric' })} 星期

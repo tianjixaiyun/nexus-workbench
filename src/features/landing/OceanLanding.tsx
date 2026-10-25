@@ -5,6 +5,7 @@ import { Sparkles } from '@react-three/drei'
 import { useNavigate } from 'react-router'
 import { CanvasErrorTrap } from '@/features/sanctuary/CanvasErrorTrap'
 import { ScrambleText, Magnetic } from '@/components/fx/micro'
+import { BlurText, Marquee } from '@/components/fx/bits'
 import { liquidNavigate } from '@/components/fx/overlays'
 import { burst } from '@/components/fx/Burst'
 import { whaleCall } from '@/lib/whaleCall'
@@ -687,6 +688,15 @@ export default function OceanLanding() {
           className="pointer-events-none absolute inset-x-0 bottom-7 flex flex-col items-center gap-1.5 transition-opacity duration-500"
           style={{ opacity: Math.max(0, 1 - progress * 7) }}
         >
+          <div className="mb-3 w-[72%] max-w-xl">
+                <Marquee
+                  speed={30}
+                  className="[mask-image:linear-gradient(to_right,transparent,black_18%,black_82%,transparent)]"
+                  items={['任务中心', '目标', '习惯打卡', '专注番茄', '笔记便签', '数据看板', '工具箱', '成就', '作品集', '手帐'].map((m) => (
+                    <span key={m} className="text-[10px] tracking-[0.3em] text-white/60">✦ {m}</span>
+                  ))}
+                />
+              </div>
           <span className="text-[10px] tracking-[0.45em] text-white/75">SCROLL TO DIVE</span>
           <span className="animate-bounce text-white/85">↓</span>
         </div>
@@ -706,8 +716,7 @@ export default function OceanLanding() {
               <ScrambleText text="向深处去。" delay={1150} />
             </h1>
             <p className="mt-6 text-sm leading-relaxed text-white/85 drop-shadow md:text-base">
-              这不只是工作台——是我的个人网站、任务、目标、习惯与笔记,
-              一座随深度生长的数字海洋。
+              <BlurText text="这不只是工作台——是我的个人网站、任务、目标、习惯与笔记,一座随深度生长的数字海洋。" delay={1900} />
             </p>
             <div className="mt-10 flex flex-wrap justify-center gap-4">
               <CapsuleButton primary onClick={() => scrollTo(containerRef.current?.clientHeight ?? 800)}>潜入 ↓</CapsuleButton>

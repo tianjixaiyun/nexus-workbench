@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router'
 import { Eraser, MapPin, Send } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Reveal, ScrambleText, Magnetic } from '@/components/fx/micro'
+import { BlurText } from '@/components/fx/bits'
 
 /**
  * 海面之上 · 手帐(剪贴簿风彩蛋页,致敬 ryota 的 VibeCoding 个人网页)
@@ -234,7 +235,7 @@ export default function ScrapbookView() {
         </h1>
         <Tape className="mt-4 ml-2 w-32 rotate-[-2deg]" />
         <p className="mt-6 max-w-md text-sm leading-relaxed text-white/60">
-          潜得再深,也要记得浮上来晒晒太阳。这一页贴着关于我、几枚足迹,和路过的你留下的字条。
+          <BlurText text="潜得再深,也要记得浮上来晒晒太阳。这一页贴着关于我、几枚足迹,和路过的你留下的字条。" delay={500} />
         </p>
       </section>
 
