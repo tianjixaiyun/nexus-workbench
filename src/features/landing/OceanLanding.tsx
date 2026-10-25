@@ -7,6 +7,7 @@ import { CanvasErrorTrap } from '@/features/sanctuary/CanvasErrorTrap'
 import { ScrambleText, Magnetic } from '@/components/fx/micro'
 import { BlurText, Marquee } from '@/components/fx/bits'
 import { ParticleField } from '@/components/fx/ParticleField'
+import { RotatingBadge } from '@/components/fx/RotatingBadge'
 import { liquidNavigate } from '@/components/fx/overlays'
 import { burst } from '@/components/fx/Burst'
 import { whaleCall } from '@/lib/whaleCall'
@@ -712,8 +713,14 @@ export default function OceanLanding() {
                   ))}
                 />
               </div>
+          <RotatingBadge
+            size={104}
+            duration={15}
+            tone="rgba(255,255,255,0.9)"
+            className="mt-1"
+            onClick={() => scrollTo(containerRef.current?.clientHeight ?? 800)}
+          />
           <span className="text-[10px] tracking-[0.45em] text-white/75">SCROLL TO DIVE</span>
-          <span className="animate-bounce text-white/85">↓</span>
         </div>
       </div>
 
