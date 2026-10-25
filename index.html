@@ -20,7 +20,18 @@
         document.documentElement.style.colorScheme = light ? 'light' : 'dark'
       })()
     </script>
-  </head>
+    <script>
+    // PWA:新版本 Service Worker 接管时自动刷新一次,确保用户看到最新版
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.addEventListener('controllerchange', function () {
+        if (!window.__swReloaded) {
+          window.__swReloaded = true
+          window.location.reload()
+        }
+      })
+    }
+  </script>
+</head>
   <body>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>

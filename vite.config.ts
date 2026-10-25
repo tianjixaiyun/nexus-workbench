@@ -30,6 +30,10 @@ export default defineConfig({
         ],
       },
       workbox: {
+        // 新版本 SW 立即接管并清掉旧缓存,避免"更新了还看到旧版"
+        skipWaiting: true,
+        clientsClaim: true,
+        cleanupOutdatedCaches: true,
         // ECharts 等大资源不预缓存,运行时按需缓存
         globPatterns: ['**/*.{js,css,html,svg,ico,woff2}'],
         maximumFileSizeToCacheInBytes: 3 * 1024 * 1024,
