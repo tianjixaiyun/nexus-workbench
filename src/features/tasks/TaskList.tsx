@@ -1,3 +1,4 @@
+import { splashGold } from '@/components/fx/Burst'
 import { useMemo, useState } from 'react'
 import { Calendar, CheckCircle2, ListChecks, Pencil, Search, Tag, Timer, Trash2 } from 'lucide-react'
 import { Badge } from '@/components/ui/Badge'
@@ -103,6 +104,10 @@ export function TaskList({ onEdit }: TaskListProps) {
                 <button
                   onClick={(e) => {
                     e.stopPropagation()
+                    if (!done) {
+                      const r = e.currentTarget.getBoundingClientRect()
+                      splashGold(r.left + r.width / 2, r.top + r.height / 2)
+                    }
                     void toggleDone(task.id)
                   }}
                   className={cn(

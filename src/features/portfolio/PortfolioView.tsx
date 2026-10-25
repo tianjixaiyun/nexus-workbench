@@ -5,6 +5,7 @@ import { cn } from '@/lib/utils'
 import { useWorkStore } from '@/stores/workStore'
 import { seedWorks } from '@/lib/sample'
 import type { WorkItem } from '@/lib/data/types'
+import { ScrambleText, Magnetic, TiltCard } from '@/components/fx/micro'
 
 /**
  * 作品集 · 编辑杂志风(浅色纸面,与主站的深色数字海洋形成"翻开画册"的反差)
@@ -269,7 +270,7 @@ export default function PortfolioView() {
       {/* 顶栏 */}
       <header className="sticky top-0 z-30 border-b border-black/8 bg-[#f6f4ef]/85 backdrop-blur-lg">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4 md:px-10">
-          <button onClick={() => navigate('/')} className="flex cursor-pointer items-center gap-2.5">
+          <button onClick={() => navigate('/')} className="flex cursor-pointer items-center gap-2.5" title="回到海洋首页">
             <span className="flex h-8 w-8 items-center justify-center rounded-full bg-black text-xs font-bold text-white">N</span>
             <span className="text-sm font-bold tracking-[0.2em]">NEXUS</span>
             <span className="text-[10px] tracking-[0.3em] text-black/45">PORTFOLIO</span>
@@ -284,22 +285,26 @@ export default function PortfolioView() {
             >
               <Pencil size={13} /> {editMode ? '编辑中' : '编辑'}
             </button>
-            <button onClick={() => navigate('/')} className="hidden cursor-pointer rounded-full border border-black/20 px-4 py-2 text-xs text-black/70 transition-colors hover:border-black/60 md:block">
-              海洋首页
-            </button>
-            <button onClick={() => navigate('/home')} className="cursor-pointer rounded-full bg-black px-4 py-2 text-xs text-white transition-transform hover:scale-[1.03]">
-              工作台 →
-            </button>
+            <Magnetic>
+              <button onClick={() => navigate('/')} className="hidden cursor-pointer rounded-full border border-black/20 px-4 py-2 text-xs text-black/70 transition-colors hover:border-black/60 md:block">
+                海洋首页
+              </button>
+            </Magnetic>
+            <Magnetic>
+              <button onClick={() => navigate('/home')} className="cursor-pointer rounded-full bg-black px-4 py-2 text-xs text-white transition-transform hover:scale-[1.03]">
+                工作台 →
+              </button>
+            </Magnetic>
           </div>
         </div>
       </header>
 
       {/* Hero */}
       <section className="mx-auto max-w-6xl px-6 pt-20 pb-14 md:px-10 md:pt-28">
-        <p className="font-mono text-xs tracking-[0.35em] text-black/45">{summary}</p>
+        <p className="font-mono text-xs tracking-[0.35em] text-black/45"><ScrambleText text={summary} delay={150} /></p>
         <h1 className="mt-6 text-6xl leading-[1.04] font-bold tracking-tight md:text-[7.5rem]" style={{ fontFamily: SERIF }}>
           作品<span className="italic">集</span>
-          <span className="mt-3 block text-base font-normal tracking-[0.5em] text-black/45 md:text-xl">SELECTED WORKS</span>
+          <span className="mt-3 block text-base font-normal tracking-[0.5em] text-black/45 md:text-xl"><ScrambleText text="SELECTED WORKS" delay={600} /></span>
         </h1>
         <p className="mt-8 max-w-md text-sm leading-relaxed text-black/60">
           {about || '这里收录我的作品与项目——网页、三维、界面与实验。每一件都是一次向深处下潜。'}
@@ -379,6 +384,7 @@ export default function PortfolioView() {
 
       {/* 关于:玻璃卡 */}
       <section className="mx-auto max-w-6xl px-6 pb-24 md:px-10">
+        <TiltCard className="rounded-3xl" max={4}>
         <div className="rounded-3xl border border-white/60 bg-white/55 p-9 shadow-[0_20px_60px_rgba(20,22,26,0.08)] backdrop-blur-xl md:p-14">
           <div className="flex items-start justify-between gap-4">
             <h2 className="text-3xl font-bold md:text-5xl" style={{ fontFamily: SERIF }}>关于我</h2>
@@ -407,6 +413,7 @@ export default function PortfolioView() {
             ))}
           </div>
         </div>
+        </TiltCard>
       </section>
 
       {/* 页脚:超大字 */}

@@ -25,6 +25,7 @@ import { cn } from '@/lib/utils'
 import { isCloudMode } from '@/lib/config'
 import { startRealtime } from '@/lib/data/realtime'
 import { requestAction } from '@/lib/uiBus'
+import { liquidNavigate } from '@/components/fx/overlays'
 import { useAuthStore } from '@/stores/authStore'
 import { useDailyStore } from '@/stores/dailyStore'
 import { useGoalStore } from '@/stores/goalStore'
@@ -232,6 +233,10 @@ export function AppLayout() {
               key={to}
               to={to}
               end={to === '/'}
+              onClick={(e) => {
+                e.preventDefault()
+                liquidNavigate(navigate, to, e)
+              }}
               className={({ isActive }) =>
                 cn(
                   'group relative flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm transition-all',

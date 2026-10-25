@@ -129,8 +129,12 @@ function SortableTaskCard({ task, onEdit, onDelete }: {
   return (
     <div
       ref={setNodeRef}
-      style={{ transform: CSS.Translate.toString(transform), transition }}
-      className={cn(isDragging && 'opacity-35')}
+      style={{
+        transform: `${CSS.Translate.toString(transform)}${isDragging ? ' rotate(4deg) scale(1.05)' : ''}`,
+        transition: isDragging ? 'transform 130ms ease-out' : (transition ?? 'transform 430ms cubic-bezier(0.2, 0.9, 0.3, 1.35)'),
+        zIndex: isDragging ? 30 : undefined,
+      }}
+      className={cn(isDragging && 'z-30 drop-shadow-[0_18px_36px_rgba(3,20,40,0.6)]')}
       {...attributes}
       {...listeners}
     >

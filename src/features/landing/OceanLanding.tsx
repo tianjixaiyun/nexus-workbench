@@ -4,6 +4,10 @@ import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import { Sparkles } from '@react-three/drei'
 import { useNavigate } from 'react-router'
 import { CanvasErrorTrap } from '@/features/sanctuary/CanvasErrorTrap'
+import { ScrambleText, Magnetic } from '@/components/fx/micro'
+import { liquidNavigate } from '@/components/fx/overlays'
+import { burst } from '@/components/fx/Burst'
+import { whaleCall } from '@/lib/whaleCall'
 
 /**
  * NEXUS · 个人数字海洋首页
@@ -42,7 +46,7 @@ function makeLinearTexture(top: string, bottom: string): THREE.Texture {
 }
 
 // ---------- 海面:顶点波浪 + 小船剪影 + 太阳光晕 ----------
-function SeaSurface() {
+function SeaSurface({ night }: { night: boolean }) {
   const mesh = useRef<THREE.Mesh>(null)
   const base = useRef<Float32Array | null>(null)
 
@@ -87,11 +91,11 @@ function SeaSurface() {
         />
       </mesh>
       {/* 太阳:水面上方的大光晕 + 亮核 */}
-      <sprite position={[30, 26, -110]} scale={[46, 46, 1]}>
-        <spriteMaterial map={sunTex} transparent opacity={0.9} depthWrite={false} />
+      <sprite position={[night ? -26 : 30, 26, -110]} scale={night ? [26, 26, 1] : [46, 46, 1]}>
+        <spriteMaterial map={sunTex} color={night ? '#dfe9ff' : '#ffffff'} transparent opacity={0.9} depthWrite={false} />
       </sprite>
-      <sprite position={[30, 26, -112]} scale={[13, 13, 1]}>
-        <spriteMaterial map={sunTex} transparent opacity={0.95} depthWrite={false} />
+      <sprite position={[night ? -26 : 30, 26, -112]} scale={night ? [8, 8, 1] : [13, 13, 1]}>
+        <spriteMaterial map={sunTex} color={night ? '#f2f7ff' : '#ffffff'} transparent opacity={0.95} depthWrite={false} />
       </sprite>
       <Boat position={[-11, 0.55, -32]} />
     </group>
@@ -258,6 +262,9 @@ function FishSchool({ center, radius, speed, y }: { center: [number, number, num
 function PassingWhale() {
   const whale = useRef<THREE.Group>(null)
   const tail = useRef<THREE.Group>(null)
+  const ring = useRef<THREE.Mesh>(null)
+  const clickAt = useRef(-1)
+  const nowT = useRef(0)
   useFrame(({ clock }) => {
     const t = clock.elapsedTime
     if (whale.current) {
@@ -266,10 +273,42 @@ function PassingWhale() {
       whale.current.rotation.z = Math.sin(t * 0.4) * 0.06
     }
     if (tail.current) tail.current.rotation.y = Math.sin(t * 1.1) * 0.3
+    // 点击后的声波环
+    if (ring.current && whale.current) {
+      if (clickAt.current >= 0) {
+        const dt = t - clickAt.current
+        if (dt < 1.1) {
+          ring.current.visible = true
+          ring.current.position.copy(whale.current.position)
+          const sc = 1.5 + dt * 11
+          ring.current.scale.set(sc, sc, sc)
+          ;(ring.current.material as THREE.MeshBasicMaterial).opacity = 0.85 * (1 - dt / 1.1)
+        } else {
+          ring.current.visible = false
+          clickAt.current = -1
+        }
+      }
+    }
   })
   const mat = <meshStandardMaterial color="#0d2c48" roughness={0.85} transparent opacity={0.97} />
   return (
-    <group ref={whale} rotation={[0, Math.PI / 2, 0]} scale={3.1}>
+    <>
+    <mesh ref={ring} visible={false}>
+      <ringGeometry args={[1.1, 1.28, 48]} />
+      <meshBasicMaterial color="#8fe8ff" transparent opacity={0} side={THREE.DoubleSide} blending={THREE.AdditiveBlending} depthWrite={false} />
+    </mesh>
+    <group
+      ref={whale}
+      rotation={[0, Math.PI / 2, 0]}
+      scale={3.1}
+      onPointerDown={(e) => {
+        e.stopPropagation()
+        whaleCall()
+        clickAt.current = nowT.current
+        const ne = e.nativeEvent as PointerEvent
+        burst(ne.clientX, ne.clientY, { count: 16, colors: ['#9ff0ff', '#e0f7ff', '#ffffff'], spread: 2.6, up: 2.4, gravity: 0.1, size: 2.8, bubbles: 12 })
+      }}
+    >
       <mesh scale={[1.05, 0.95, 2.6]}>
         <sphereGeometry args={[0.8, 26, 26]} />
         {mat}
@@ -295,6 +334,7 @@ function PassingWhale() {
       {/* 鲸背微光 */}
       <Sparkles count={12} scale={[1.6, 0.9, 3.4]} size={2} speed={0.25} color="#9fd8ff" opacity={0.5} />
     </group>
+    </>
   )
 }
 
@@ -422,22 +462,30 @@ const COLOR_STOPS: { t: number; color: string }[] = [
   { t: 1.0, color: '#04101f' }, // 深海午夜
 ]
 
-function sampleColor(p: number, out: THREE.Color) {
+const NIGHT_STOPS: { t: number; color: string }[] = [
+  { t: 0.0, color: '#0d1c31' }, // 夜空与月光海面
+  { t: 0.16, color: '#0a2138' },
+  { t: 0.4, color: '#071c33' },
+  { t: 0.68, color: '#04122a' },
+  { t: 1.0, color: '#010813' },
+]
+
+function sampleColor(p: number, stops: { t: number; color: string }[], out: THREE.Color) {
   const t = THREE.MathUtils.clamp(p, 0, 1)
   let i = 0
-  while (i < COLOR_STOPS.length - 2 && t > COLOR_STOPS[i + 1].t) i++
-  const a = COLOR_STOPS[i]
-  const b = COLOR_STOPS[i + 1]
+  while (i < stops.length - 2 && t > stops[i + 1].t) i++
+  const a = stops[i]
+  const b = stops[i + 1]
   const u = THREE.MathUtils.clamp((t - a.t) / (b.t - a.t), 0, 1)
   out.set(a.color).lerp(new THREE.Color(b.color), u)
 }
 
-function DepthAtmosphere({ scrollRef }: { scrollRef: RefObject<number> }) {
+function DepthAtmosphere({ scrollRef, night }: { scrollRef: RefObject<number>; night: boolean }) {
   const { scene } = useThree()
   const c = useMemo(() => new THREE.Color('#9fd3ef'), [])
   useFrame(() => {
     const p = scrollRef.current ?? 0
-    sampleColor(p, c)
+    sampleColor(p, night ? NIGHT_STOPS : COLOR_STOPS, c)
     const bg = scene.background as THREE.Color | null
     if (bg) bg.copy(c)
     const fog = scene.fog as THREE.Fog | null
@@ -500,16 +548,16 @@ function CameraRig({ scrollRef }: { scrollRef: RefObject<number> }) {
 }
 
 // ---------- 场景主体 ----------
-function Scene({ scrollRef }: { scrollRef: RefObject<number> }) {
+function Scene({ scrollRef, night }: { scrollRef: RefObject<number>; night: boolean }) {
   return (
     <>
-      <color attach="background" args={['#9fd3ef']} />
-      <fog attach="fog" args={['#9fd3ef', 46, 170]} />
-      <ambientLight intensity={0.55} color="#9cc4e0" />
-      <directionalLight position={[14, 22, -30]} intensity={1.15} color="#ffe9c4" />
+      <color attach="background" args={[night ? '#0d1c31' : '#9fd3ef']} />
+      <fog attach="fog" args={[night ? '#0d1c31' : '#9fd3ef', night ? 30 : 46, night ? 120 : 170]} />
+      <ambientLight intensity={night ? 0.38 : 0.55} color={night ? '#7d95c4' : '#9cc4e0'} />
+      <directionalLight position={night ? [-16, 24, -30] : [14, 22, -30]} intensity={night ? 0.6 : 1.15} color={night ? '#c9d9ff' : '#ffe9c4'} />
       <pointLight position={[0, -30, 0]} intensity={0.5} distance={40} color="#1c4e78" />
 
-      <SeaSurface />
+      <SeaSurface night={night} />
       <LightShafts scrollRef={scrollRef} />
       <Bubbles />
       <FishSchool center={[0, -9.5, -4]} radius={5.5} speed={0.5} y={0} />
@@ -517,13 +565,13 @@ function Scene({ scrollRef }: { scrollRef: RefObject<number> }) {
       <PassingWhale />
       <SeaFloor />
 
-      <DepthAtmosphere scrollRef={scrollRef} />
+      <DepthAtmosphere scrollRef={scrollRef} night={night} />
       <CameraRig scrollRef={scrollRef} />
     </>
   )
 }
 
-const SceneCanvas = memo(function SceneCanvas({ scrollRef }: { scrollRef: RefObject<number> }) {
+const SceneCanvas = memo(function SceneCanvas({ scrollRef, night }: { scrollRef: RefObject<number>; night: boolean }) {
   return (
     <Canvas
       camera={{ position: [0, 12.5, 30], fov: 42 }}
@@ -532,15 +580,16 @@ const SceneCanvas = memo(function SceneCanvas({ scrollRef }: { scrollRef: RefObj
       style={{ position: 'absolute', inset: 0 }}
     >
       <CanvasErrorTrap>
-        <Scene scrollRef={scrollRef} />
+        <Scene scrollRef={scrollRef} night={night} />
       </CanvasErrorTrap>
     </Canvas>
   )
 })
 
 // ---------- 页面:粘性画布 + 下潜分幕文案 ----------
-function CapsuleButton({ children, onClick, primary }: { children: ReactNode; onClick: () => void; primary?: boolean }) {
+function CapsuleButton({ children, onClick, primary }: { children: ReactNode; onClick: (e: React.MouseEvent) => void; primary?: boolean }) {
   return (
+    <Magnetic>
     <button
       onClick={onClick}
       className={
@@ -551,11 +600,17 @@ function CapsuleButton({ children, onClick, primary }: { children: ReactNode; on
     >
       {children}
     </button>
+    </Magnetic>
   )
 }
 
 export default function OceanLanding() {
   const navigate = useNavigate()
+  // 深夜 23:00-5:00:月光海洋
+  const night = useMemo(() => {
+    const h = new Date().getHours()
+    return h >= 23 || h < 5
+  }, [])
   const [progress, setProgress] = useState(0)
   const scrollRef = useRef(0)
   const containerRef = useRef<HTMLDivElement>(null)
@@ -579,12 +634,12 @@ export default function OceanLanding() {
     <div
       ref={containerRef}
       onScroll={handleScroll}
-      className="relative h-dvh overflow-y-auto overflow-x-hidden bg-[#9fd3ef]"
-      style={{ scrollbarWidth: 'none' }}
+      className="relative h-dvh overflow-y-auto overflow-x-hidden"
+      style={{ scrollbarWidth: 'none', background: night ? '#0d1c31' : '#9fd3ef' }}
     >
       {/* 粘性画布 */}
       <div className="sticky top-0 h-dvh w-full">
-        <SceneCanvas scrollRef={scrollRef} />
+        <SceneCanvas scrollRef={scrollRef} night={night} />
         {/* 上下暗角保证文字可读 */}
         <div className="pointer-events-none absolute inset-x-0 top-0 h-24 bg-gradient-to-b from-black/25 to-transparent" />
         <div className="pointer-events-none absolute inset-x-0 bottom-0 h-28 bg-gradient-to-t from-black/35 to-transparent" />
@@ -602,13 +657,13 @@ export default function OceanLanding() {
           </div>
           <nav className="pointer-events-auto hidden items-center gap-7 text-[13px] text-white/85 md:flex">
             <button onClick={() => navigate('/home')} className="cursor-pointer transition-colors hover:text-white">工作台</button>
-            <button onClick={() => navigate('/portfolio')} className="cursor-pointer transition-colors hover:text-white">作品集</button>
-            <button onClick={() => navigate('/focus')} className="cursor-pointer transition-colors hover:text-white">专注</button>
-            <button onClick={() => navigate('/sanctuary')} className="cursor-pointer transition-colors hover:text-white">云鲸圣域</button>
-            <CapsuleButton primary onClick={() => navigate('/home')}>开始使用 →</CapsuleButton>
+            <button onClick={(e) => liquidNavigate(navigate, '/portfolio', e)} className="cursor-pointer transition-colors hover:text-white">作品集</button>
+            <button onClick={(e) => liquidNavigate(navigate, '/focus', e)} className="cursor-pointer transition-colors hover:text-white">专注</button>
+            <button onClick={(e) => liquidNavigate(navigate, '/sanctuary', e)} className="cursor-pointer transition-colors hover:text-white">云鲸圣域</button>
+            <CapsuleButton primary onClick={(e) => liquidNavigate(navigate, '/home', e)}>开始使用 →</CapsuleButton>
           </nav>
           <div className="pointer-events-auto md:hidden">
-            <CapsuleButton primary onClick={() => navigate('/home')}>开始使用</CapsuleButton>
+            <CapsuleButton primary onClick={(e) => liquidNavigate(navigate, '/home', e)}>开始使用</CapsuleButton>
           </div>
         </div>
 
@@ -646,9 +701,9 @@ export default function OceanLanding() {
               NEXUS · 个人数字海洋
             </p>
             <h1 className="text-5xl leading-[1.15] font-bold tracking-wide text-white drop-shadow-lg md:text-7xl">
-              把喧嚣留在水面上,
+              <ScrambleText text="把喧嚣留在水面上," delay={400} />
               <br />
-              向深处去。
+              <ScrambleText text="向深处去。" delay={1150} />
             </h1>
             <p className="mt-6 text-sm leading-relaxed text-white/85 drop-shadow md:text-base">
               这不只是工作台——是我的个人网站、任务、目标、习惯与笔记,
@@ -656,7 +711,7 @@ export default function OceanLanding() {
             </p>
             <div className="mt-10 flex flex-wrap justify-center gap-4">
               <CapsuleButton primary onClick={() => scrollTo(containerRef.current?.clientHeight ?? 800)}>潜入 ↓</CapsuleButton>
-              <CapsuleButton onClick={() => navigate('/home')}>直接进入工作台</CapsuleButton>
+              <CapsuleButton onClick={(e) => liquidNavigate(navigate, '/home', e)}>直接进入工作台</CapsuleButton>
             </div>
           </div>
         </section>
@@ -692,7 +747,7 @@ export default function OceanLanding() {
               在这里陪我把一段段时间,沉成安静的力量。
             </p>
             <div className="mt-8 flex flex-wrap gap-4">
-              <CapsuleButton onClick={() => navigate('/focus')}>开始一次专注 →</CapsuleButton>
+              <CapsuleButton onClick={(e) => liquidNavigate(navigate, '/focus', e)}>开始一次专注 →</CapsuleButton>
             </div>
           </div>
         </section>
@@ -709,7 +764,7 @@ export default function OceanLanding() {
               它守着我的圣域,也记得我每一次专注的呼吸。
             </p>
             <div className="mt-8 flex flex-wrap gap-4">
-              <CapsuleButton onClick={() => navigate('/sanctuary')}>去云鲸圣域看看 →</CapsuleButton>
+              <CapsuleButton onClick={(e) => liquidNavigate(navigate, '/sanctuary', e)}>去云鲸圣域看看 →</CapsuleButton>
             </div>
           </div>
         </section>
@@ -726,7 +781,7 @@ export default function OceanLanding() {
               潜到这里,欢迎来到我的世界。
             </p>
             <div className="mt-10 flex flex-wrap justify-center gap-4">
-              <CapsuleButton primary onClick={() => navigate('/home')}>进入工作台 →</CapsuleButton>
+              <CapsuleButton primary onClick={(e) => liquidNavigate(navigate, '/home', e)}>进入工作台 →</CapsuleButton>
               <CapsuleButton onClick={() => navigate('/portfolio')}>看看作品集</CapsuleButton>
               <CapsuleButton onClick={() => scrollTo(0)}>回到水面 ↑</CapsuleButton>
             </div>

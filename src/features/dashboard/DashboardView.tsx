@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { CountUp, TiltCard } from '@/components/fx/micro'
 import { Link, useNavigate } from 'react-router'
 import {
   CalendarClock,
@@ -81,11 +82,12 @@ function StatCard({ icon: Icon, label, value, tint, progress }: {
   progress?: number
 }) {
   return (
-    <Card className="glass-card-hover">
+    <TiltCard className="h-full rounded-2xl">
+    <Card className="glass-card-hover h-full">
       <div className="flex items-center justify-between">
         <div>
           <p className="text-xs text-txt-muted">{label}</p>
-          <p className="mt-1.5 font-mono text-2xl font-bold tracking-tight tabular-nums">{value}</p>
+          <p className="mt-1.5 font-mono text-2xl font-bold tracking-tight tabular-nums">{typeof value === 'number' ? <CountUp value={value} /> : value}</p>
         </div>
         <div className={cn('rounded-xl p-2.5', tint)}>
           <Icon size={18} />
@@ -97,6 +99,7 @@ function StatCard({ icon: Icon, label, value, tint, progress }: {
         </div>
       )}
     </Card>
+    </TiltCard>
   )
 }
 

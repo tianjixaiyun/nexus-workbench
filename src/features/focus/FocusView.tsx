@@ -5,6 +5,8 @@ import { EmptyState } from '@/components/ui/EmptyState'
 import { Select } from '@/components/ui/Input'
 import { cn, todayStr } from '@/lib/utils'
 import { recordSession, recentSessions, todaySessions } from '@/lib/pomodoro'
+import { celebrate } from '@/components/fx/Burst'
+import { checkAchievementsNow } from '@/components/fx/achievements'
 import { activeTasks, useTaskStore } from '@/stores/taskStore'
 import { NoisePlayer, type NoiseKind } from '@/lib/noise'
 import { useSettingsStore } from '@/stores/settingsStore'
@@ -61,6 +63,8 @@ export function FocusView() {
     if (mode === 'work') {
       recordSession(todayStr())
       setSessions(todaySessions())
+      celebrate()
+      checkAchievementsNow()
       // 关联了任务:给该任务累加一个番茄的专注时长(Toggl 式统计)
       if (taskId) void useTaskStore.getState().addFocusMinutes(taskId, 25)
       switchMode('short')

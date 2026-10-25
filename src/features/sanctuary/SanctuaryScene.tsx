@@ -5,6 +5,10 @@ import { Float, OrbitControls, Sparkles, Stars } from '@react-three/drei'
 import { useNavigate } from 'react-router'
 import { cn } from '@/lib/utils'
 import { CanvasErrorTrap } from './CanvasErrorTrap'
+import { ScrambleText, Magnetic } from '@/components/fx/micro'
+import { liquidNavigate } from '@/components/fx/overlays'
+import { burst } from '@/components/fx/Burst'
+import { whaleCall } from '@/lib/whaleCall'
 
 /**
  * 云鲸圣域 · 电影感展厅
@@ -55,6 +59,8 @@ function WhaleSpirit() {
   const tail = useRef<THREE.Group>(null)
   const core = useRef<THREE.Mesh>(null)
   const t = useRef(Math.PI * 0.6)
+  const ring = useRef<THREE.Mesh>(null)
+  const clickAt = useRef(-1)
 
   useFrame((_, dt) => {
     t.current += dt
@@ -80,6 +86,22 @@ function WhaleSpirit() {
       const s = 1 + 0.28 * Math.sin(time * 1.4)
       core.current.scale.setScalar(s)
     }
+    // 点击后的声波环,从鲸的位置荡开
+    if (ring.current && whale.current) {
+      if (clickAt.current >= 0) {
+        const dt = time - clickAt.current
+        if (dt < 1.1) {
+          ring.current.visible = true
+          ring.current.position.copy(whale.current.position)
+          const sc = 1.2 + dt * 6
+          ring.current.scale.set(sc, sc, sc)
+          ;(ring.current.material as THREE.MeshBasicMaterial).opacity = 0.8 * (1 - dt / 1.1)
+        } else {
+          ring.current.visible = false
+          clickAt.current = -1
+        }
+      }
+    }
   })
 
   const bodyMat = (
@@ -95,7 +117,22 @@ function WhaleSpirit() {
   )
 
   return (
-    <group ref={whale} scale={0.72}>
+    <>
+    <mesh ref={ring} visible={false}>
+      <ringGeometry args={[0.9, 1.05, 48]} />
+      <meshBasicMaterial color="#9fe8ff" transparent opacity={0} side={THREE.DoubleSide} blending={THREE.AdditiveBlending} depthWrite={false} />
+    </mesh>
+    <group
+      ref={whale}
+      scale={0.72}
+      onPointerDown={(e) => {
+        e.stopPropagation()
+        whaleCall()
+        clickAt.current = t.current
+        const ne = e.nativeEvent as PointerEvent
+        burst(ne.clientX, ne.clientY, { count: 16, colors: ['#9ff0ff', '#e0f7ff', '#ffffff'], spread: 2.6, up: 2.4, gravity: 0.1, size: 2.8, bubbles: 12 })
+      }}
+    >
       {/* 身体:沿 +Z 前进,头部在前 */}
       <mesh scale={[0.9, 0.85, 2.1]}>
         <sphereGeometry args={[0.62, 32, 32]} />
@@ -143,6 +180,7 @@ function WhaleSpirit() {
       {/* 星尘环绕 */}
       <Sparkles count={26} scale={[1.8, 1.2, 2.6]} size={2.4} speed={0.3} color="#cfe8ff" />
     </group>
+    </>
   )
 }
 
@@ -629,8 +667,9 @@ const SECTIONS = [
   { eyebrow: '终章 · 呼吸', align: 'center' as const },
 ]
 
-function CapsuleButton({ children, onClick, primary }: { children: ReactNode; onClick: () => void; primary?: boolean }) {
+function CapsuleButton({ children, onClick, primary }: { children: ReactNode; onClick: (e: React.MouseEvent) => void; primary?: boolean }) {
   return (
+    <Magnetic>
     <button
       onClick={onClick}
       className={cn(
@@ -642,6 +681,7 @@ function CapsuleButton({ children, onClick, primary }: { children: ReactNode; on
     >
       {children}
     </button>
+    </Magnetic>
   )
 }
 
@@ -721,7 +761,7 @@ export default function SanctuaryScene() {
               {freeLook ? '✓ 自由视角 · 拖拽旋转' : '自由视角'}
             </button>
             <button
-              onClick={() => navigate('/home')}
+              onClick={(e) => liquidNavigate(navigate, '/home', e)}
               className="cursor-pointer rounded-full border border-white/20 bg-white/5 px-4 py-2 text-[11px] tracking-wider text-white/75 backdrop-blur-md transition-all hover:border-white/40"
             >
               进入工作台
@@ -768,7 +808,7 @@ export default function SanctuaryScene() {
               {SECTIONS[0].eyebrow}
             </p>
             <h1 className="text-5xl leading-[1.12] font-bold tracking-wide text-white md:text-7xl">
-              为纯粹专注,
+              <ScrambleText text="为纯粹专注," delay={300} />
               <br />
               留一座<span className="neon-gradient-text">圣域</span>。
             </h1>
@@ -778,10 +818,10 @@ export default function SanctuaryScene() {
               一道光环昼夜巡游,替你记住每一次专注的呼吸。
             </p>
             <div className="mt-10 flex flex-wrap gap-4">
-              <CapsuleButton primary onClick={() => navigate('/home')}>
+              <CapsuleButton primary onClick={(e) => liquidNavigate(navigate, '/home', e)}>
                 进入工作台 →
               </CapsuleButton>
-              <CapsuleButton onClick={() => navigate('/focus')}>开始专注</CapsuleButton>
+              <CapsuleButton onClick={(e) => liquidNavigate(navigate, '/focus', e)}>开始专注</CapsuleButton>
             </div>
           </div>
         </section>
@@ -838,7 +878,7 @@ export default function SanctuaryScene() {
               ELEVATE YOUR FOCUS THROUGH TIMELESS RESONANCE.
             </p>
             <div className="mt-10 flex flex-wrap justify-center gap-4">
-              <CapsuleButton primary onClick={() => navigate('/home')}>
+              <CapsuleButton primary onClick={(e) => liquidNavigate(navigate, '/home', e)}>
                 回到工作台
               </CapsuleButton>
               <CapsuleButton onClick={() => setFreeLook(true)}>自由视角探索</CapsuleButton>

@@ -13,10 +13,18 @@ import StatsPage from '@/pages/StatsPage'
 import LinksPage from '@/pages/LinksPage'
 import TrashPage from '@/pages/TrashPage'
 import LoginPage from '@/pages/LoginPage'
+import { GlobalRipple, LiquidCurtain, DiveIntro } from '@/components/fx/overlays'
+import { BurstHost } from '@/components/fx/Burst'
+import { AchievementWatcher } from '@/components/fx/achievements'
 
 export default function App() {
   return (
     <BrowserRouter basename={import.meta.env.PROD ? '/nexus-workbench' : '/'}>
+      <GlobalRipple />
+      <LiquidCurtain />
+      <BurstHost />
+      <DiveIntro />
+      <AchievementWatcher />
       <Routes>
         <Route path="/login" element={<LoginPage />} />
         {/* 个人网站首页:全屏海洋下潜叙事,独立于工作台外壳 */}
