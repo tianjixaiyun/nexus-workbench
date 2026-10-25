@@ -1,17 +1,21 @@
-import { useMemo, useRef, useState } from 'react'
+import { memo, useEffect, useMemo, useRef, useState, type ComponentRef, type ReactNode, type RefObject } from 'react'
 import * as THREE from 'three'
 import { Canvas, useFrame } from '@react-three/fiber'
 import { Float, OrbitControls, Sparkles, Stars } from '@react-three/drei'
+import { useNavigate } from 'react-router'
 import { cn } from '@/lib/utils'
 import { CanvasErrorTrap } from './CanvasErrorTrap'
 
 /**
- * 云鲸圣域:封存在玻璃立方体中的微缩梦幻生态。
- * 一头半透明的「云鲸星灵」在立方体内沿 8 字巡游,
- * 呼吸时整个生态轻微律动。全部实时渲染,可拖拽/缩放。
+ * 云鲸圣域 · 电影感展厅
+ * 封存在玻璃立方体中的微缩生态:云鲸星灵沿 8 字巡游,呼吸律动,
+ * 一道带粒子拖尾的发光轨道环环绕立方体(致敬 Aether 式产品页)。
+ * 页面滚动驱动镜头分镜:推近星灵 → 俯冲生态 → 仰瞰光环 → 拉远收官。
  */
 
 const CUBE = 9 // 玻璃立方体边长
+/** 主区域可用高度:视口 - 顶栏 3.5rem */
+const VIEW_H = 'calc(100dvh - 3.5rem)'
 
 // ---------- 玻璃立方体 ----------
 export function GlassCube() {
@@ -92,54 +96,53 @@ function WhaleSpirit() {
 
   return (
     <group ref={whale} scale={0.72}>
-        {/* 身体:沿 +Z 前进,头部在前 */}
-        <mesh scale={[0.9, 0.85, 2.1]}>
-          <sphereGeometry args={[0.62, 32, 32]} />
-          {bodyMat}
-        </mesh>
-        {/* 头部轮廓 */}
-        <mesh position={[0, 0.06, 1.05]} scale={[0.72, 0.6, 0.85]}>
-          <sphereGeometry args={[0.5, 24, 24]} />
-          {bodyMat}
-        </mesh>
-        {/* 云雾般的头冠 */}
-        <mesh position={[0, 0.42, 0.72]} scale={[0.55, 0.34, 0.6]}>
+      {/* 身体:沿 +Z 前进,头部在前 */}
+      <mesh scale={[0.9, 0.85, 2.1]}>
+        <sphereGeometry args={[0.62, 32, 32]} />
+        {bodyMat}
+      </mesh>
+      {/* 头部轮廓 */}
+      <mesh position={[0, 0.06, 1.05]} scale={[0.72, 0.6, 0.85]}>
+        <sphereGeometry args={[0.5, 24, 24]} />
+        {bodyMat}
+      </mesh>
+      {/* 云雾般的头冠 */}
+      <mesh position={[0, 0.42, 0.72]} scale={[0.55, 0.34, 0.6]}>
+        <sphereGeometry args={[0.5, 20, 20]} />
+        <meshStandardMaterial color="#e6efff" transparent opacity={0.55} roughness={0.9} />
+      </mesh>
+      {/* 发光心核 */}
+      <mesh ref={core} position={[0, -0.02, 0.35]}>
+        <sphereGeometry args={[0.16, 20, 20]} />
+        <meshBasicMaterial color="#bff7ff" transparent opacity={0.95} />
+      </mesh>
+      {/* 双鳍 */}
+      <mesh position={[0.5, -0.18, 0.55]} rotation={[0.4, 0, -0.7]} scale={[0.14, 0.5, 0.28]}>
+        <sphereGeometry args={[0.5, 16, 16]} />
+        {bodyMat}
+      </mesh>
+      <mesh position={[-0.5, -0.18, 0.55]} rotation={[0.4, 0, 0.7]} scale={[0.14, 0.5, 0.28]}>
+        <sphereGeometry args={[0.5, 16, 16]} />
+        {bodyMat}
+      </mesh>
+      {/* 尾部(上下摆动) */}
+      <group ref={tail} position={[0, 0.02, -1.5]}>
+        <mesh position={[0, 0, -0.25]} scale={[0.3, 0.26, 0.9]}>
           <sphereGeometry args={[0.5, 20, 20]} />
-          <meshStandardMaterial color="#e6efff" transparent opacity={0.55} roughness={0.9} />
+          {bodyMat}
         </mesh>
-        {/* 发光心核 */}
-        <mesh ref={core} position={[0, -0.02, 0.35]}>
-          <sphereGeometry args={[0.16, 20, 20]} />
-          <meshBasicMaterial color="#bff7ff" transparent opacity={0.95} />
-        </mesh>
-        {/* 双鳍 */}
-        <mesh position={[0.5, -0.18, 0.55]} rotation={[0.4, 0, -0.7]} scale={[0.14, 0.5, 0.28]}>
+        <mesh position={[0, 0.05, -0.95]} rotation={[0, 0, 0.5]} scale={[0.1, 0.55, 0.4]}>
           <sphereGeometry args={[0.5, 16, 16]} />
           {bodyMat}
         </mesh>
-        <mesh position={[-0.5, -0.18, 0.55]} rotation={[0.4, 0, 0.7]} scale={[0.14, 0.5, 0.28]}>
+        <mesh position={[0, -0.05, -0.95]} rotation={[0, 0, -0.5]} scale={[0.1, 0.55, 0.4]}>
           <sphereGeometry args={[0.5, 16, 16]} />
           {bodyMat}
         </mesh>
-        {/* 尾部(上下摆动) */}
-        <group ref={tail} position={[0, 0.02, -1.5]}>
-          <mesh position={[0, 0, -0.25]} scale={[0.3, 0.26, 0.9]}>
-            <sphereGeometry args={[0.5, 20, 20]} />
-            {bodyMat}
-          </mesh>
-          <mesh position={[0, 0.05, -0.95]} rotation={[0, 0, 0.5]} scale={[0.1, 0.55, 0.4]}>
-            <sphereGeometry args={[0.5, 16, 16]} />
-            {bodyMat}
-          </mesh>
-          <mesh position={[0, -0.05, -0.95]} rotation={[0, 0, -0.5]} scale={[0.1, 0.55, 0.4]}>
-            <sphereGeometry args={[0.5, 16, 16]} />
-            {bodyMat}
-          </mesh>
-        </group>
-        {/* 星尘环绕 */}
-        <Sparkles count={26} scale={[1.8, 1.2, 2.6]} size={2.4} speed={0.3} color="#cfe8ff" />
       </group>
-    
+      {/* 星尘环绕 */}
+      <Sparkles count={26} scale={[1.8, 1.2, 2.6]} size={2.4} speed={0.3} color="#cfe8ff" />
+    </group>
   )
 }
 
@@ -368,8 +371,98 @@ function MistBand() {
   )
 }
 
+// ---------- 发光轨道环(致敬 Aether 式产品页的粒子拖尾光弧) ----------
+function makeGlowTexture(): THREE.Texture {
+  const size = 128
+  const canvas = document.createElement('canvas')
+  canvas.width = size
+  canvas.height = size
+  const ctx = canvas.getContext('2d')!
+  const grad = ctx.createRadialGradient(size / 2, size / 2, 0, size / 2, size / 2, size / 2)
+  grad.addColorStop(0, 'rgba(255,255,255,1)')
+  grad.addColorStop(0.18, 'rgba(255,255,255,0.85)')
+  grad.addColorStop(0.5, 'rgba(255,255,255,0.22)')
+  grad.addColorStop(1, 'rgba(255,255,255,0)')
+  ctx.fillStyle = grad
+  ctx.fillRect(0, 0, size, size)
+  return new THREE.CanvasTexture(canvas)
+}
+
+/** 一条环绕立方体的光弧:环体 + 头部亮星 + 渐隐拖尾,整体绕 Y 巡航 */
+function OrbitalArc({ radius, arcLen, tilt, phaseY, color, speed }: {
+  radius: number
+  arcLen: number
+  tilt: number
+  phaseY: number
+  color: string
+  speed: number
+}) {
+  const spinner = useRef<THREE.Group>(null)
+  const tex = useMemo(() => makeGlowTexture(), [])
+  // 拖尾亮星:沿弧线排在头部之后,逐个渐隐(角度位置固定,由外层旋转带动巡航)
+  const trail = useMemo(() => {
+    const items: { pos: THREE.Vector3; scale: number; opacity: number }[] = []
+    for (let i = 0; i < 12; i++) {
+      const theta = arcLen - (i + 1) * 0.1
+      items.push({
+        pos: new THREE.Vector3(radius * Math.cos(theta), 0, radius * Math.sin(theta)),
+        scale: 0.34 * (1 - i / 14),
+        opacity: 0.55 * (1 - i / 12) ** 1.6,
+      })
+    }
+    return items
+  }, [radius, arcLen])
+  // 头部亮星(弧的前端)
+  const head = useMemo(
+    () => new THREE.Vector3(radius * Math.cos(arcLen), 0, radius * Math.sin(arcLen)),
+    [radius, arcLen],
+  )
+
+  useFrame((_, dt) => {
+    if (spinner.current) spinner.current.rotation.y += dt * speed
+  })
+
+  return (
+    <group rotation={[tilt, phaseY, 0]}>
+      <group ref={spinner}>
+        <mesh rotation={[Math.PI / 2, 0, 0]}>
+          <torusGeometry args={[radius, 0.018, 8, 120, arcLen]} />
+          <meshBasicMaterial color={color} transparent opacity={0.5} blending={THREE.AdditiveBlending} depthWrite={false} />
+        </mesh>
+        <sprite position={head} scale={[0.6, 0.6, 1]}>
+          <spriteMaterial map={tex} color={color} transparent opacity={0.95} blending={THREE.AdditiveBlending} depthWrite={false} />
+        </sprite>
+        {trail.map(({ pos, scale, opacity }, i) => (
+          <sprite key={i} position={pos} scale={[scale, scale, 1]}>
+            <spriteMaterial map={tex} color={color} transparent opacity={opacity} blending={THREE.AdditiveBlending} depthWrite={false} />
+          </sprite>
+        ))}
+      </group>
+    </group>
+  )
+}
+
+/** 主青色光弧 + 副紫色光弧 + 两道极淡的完整导轨环 */
+function OrbitalRings() {
+  return (
+    <group>
+      <OrbitalArc radius={6.6} arcLen={2.3} tilt={0.3} phaseY={0} color="#67e8f9" speed={0.42} />
+      <OrbitalArc radius={7.5} arcLen={1.5} tilt={-0.16} phaseY={2.1} color="#a78bfa" speed={-0.26} />
+      {/* 极淡的完整导轨,交代光弧的轨道所在 */}
+      <mesh rotation={[Math.PI / 2 + 0.3, 0, 0]}>
+        <torusGeometry args={[6.6, 0.006, 6, 140]} />
+        <meshBasicMaterial color="#67e8f9" transparent opacity={0.14} blending={THREE.AdditiveBlending} depthWrite={false} />
+      </mesh>
+      <mesh rotation={[Math.PI / 2 - 0.16, 0.4, 0]}>
+        <torusGeometry args={[7.5, 0.006, 6, 140]} />
+        <meshBasicMaterial color="#a78bfa" transparent opacity={0.1} blending={THREE.AdditiveBlending} depthWrite={false} />
+      </mesh>
+    </group>
+  )
+}
+
 // ---------- 呼吸律动(整个生态随云鲸呼吸轻微起伏) ----------
-function BreathRhythm({ children, muted }: { children: React.ReactNode; muted: boolean }) {
+function BreathRhythm({ children, muted }: { children: ReactNode; muted: boolean }) {
   const ref = useRef<THREE.Group>(null)
   useFrame(({ clock }) => {
     if (!ref.current) return
@@ -400,25 +493,87 @@ function BreathLights({ muted }: { muted: boolean }) {
   )
 }
 
+// ---------- 滚动运镜:关键帧之间平滑插值 ----------
+const KEYFRAMES: { t: number; pos: [number, number, number]; tgt: [number, number, number] }[] = [
+  { t: 0.0, pos: [11.8, 5.4, 13.2], tgt: [0, 0.6, 0] }, // 定场:立方体与光环
+  { t: 0.26, pos: [5.6, 2.4, 7.4], tgt: [0, 1.3, 0] }, // 推近云鲸
+  { t: 0.52, pos: [-7.4, -0.6, 6.2], tgt: [0, -1.5, 0] }, // 俯冲生态
+  { t: 0.78, pos: [1.2, 9.2, 10.2], tgt: [0, 0.2, 0] }, // 仰瞰光环
+  { t: 1.0, pos: [16, 7.6, 17], tgt: [0, 0.6, 0] }, // 收官拉远
+]
+
+function sampleKeyframes(p: number, outPos: THREE.Vector3, outTgt: THREE.Vector3) {
+  const t = THREE.MathUtils.clamp(p, 0, 1)
+  let i = 0
+  while (i < KEYFRAMES.length - 2 && t > KEYFRAMES[i + 1].t) i++
+  const a = KEYFRAMES[i]
+  const b = KEYFRAMES[i + 1]
+  const u = THREE.MathUtils.clamp((t - a.t) / (b.t - a.t), 0, 1)
+  const s = u * u * (3 - 2 * u) // smoothstep:分镜切换带缓入缓出
+  outPos.set(
+    THREE.MathUtils.lerp(a.pos[0], b.pos[0], s),
+    THREE.MathUtils.lerp(a.pos[1], b.pos[1], s),
+    THREE.MathUtils.lerp(a.pos[2], b.pos[2], s),
+  )
+  outTgt.set(
+    THREE.MathUtils.lerp(a.tgt[0], b.tgt[0], s),
+    THREE.MathUtils.lerp(a.tgt[1], b.tgt[1], s),
+    THREE.MathUtils.lerp(a.tgt[2], b.tgt[2], s),
+  )
+}
+
+function CameraRig({ scrollRef, freeLook, lookRef }: {
+  scrollRef: RefObject<number>
+  freeLook: boolean
+  lookRef: RefObject<THREE.Vector3>
+}) {
+  const tmpPos = useMemo(() => new THREE.Vector3(), [])
+  const tmpTgt = useMemo(() => new THREE.Vector3(), [])
+  useFrame(({ camera }, dt) => {
+    if (freeLook) return // 自由视角时交给 OrbitControls
+    sampleKeyframes(scrollRef.current ?? 0, tmpPos, tmpTgt)
+    const l = 2.6
+    camera.position.set(
+      THREE.MathUtils.damp(camera.position.x, tmpPos.x, l, dt),
+      THREE.MathUtils.damp(camera.position.y, tmpPos.y, l, dt),
+      THREE.MathUtils.damp(camera.position.z, tmpPos.z, l, dt),
+    )
+    const look = lookRef.current
+    look.set(
+      THREE.MathUtils.damp(look.x, tmpTgt.x, l, dt),
+      THREE.MathUtils.damp(look.y, tmpTgt.y, l, dt),
+      THREE.MathUtils.damp(look.z, tmpTgt.z, l, dt),
+    )
+    camera.lookAt(look)
+  })
+  return null
+}
+
 // ---------- 场景主体 ----------
-function Scene({ breathing, autoRotate }: { breathing: boolean; autoRotate: boolean }) {
+function Scene({ scrollRef, freeLook, lookRef, controlsRef }: {
+  scrollRef: RefObject<number>
+  freeLook: boolean
+  lookRef: RefObject<THREE.Vector3>
+  controlsRef: RefObject<ComponentRef<typeof OrbitControls> | null>
+}) {
   return (
     <>
       <color attach="background" args={['#060a16']} />
-      <fog attach="fog" args={['#060a16', 22, 46]} />
-      <BreathLights muted={!breathing} />
+      <fog attach="fog" args={['#060a16', 24, 58]} />
+      <BreathLights muted={false} />
       <Stars radius={80} depth={35} count={2600} factor={3.2} saturation={0} fade speed={0.4} />
 
-      <BreathRhythm muted={!breathing}>
+      <BreathRhythm muted={false}>
         <GlassCube />
         <MainIsland />
         <FloatingIsles />
         <WhaleSpirit />
-        {/* 立方体内星尘 */}
-        {false && <Sparkles count={130} scale={[8.4, 8.4, 8.4]} size={2.1} speed={0.22} color="#cfe8ff" opacity={0.65} />}
         {/* 内部云雾(自制精灵,drei Cloud 会炸渲染) */}
         <MistBand />
       </BreathRhythm>
+
+      {/* 发光轨道环:环绕玻璃立方体巡航 */}
+      <OrbitalRings />
 
       {/* 远景星云薄雾 */}
       <mesh position={[-14, 6, -30]} scale={26}>
@@ -430,13 +585,14 @@ function Scene({ breathing, autoRotate }: { breathing: boolean; autoRotate: bool
         <meshBasicMaterial color="#2b2153" transparent opacity={0.3} blending={THREE.AdditiveBlending} depthWrite={false} />
       </mesh>
 
+      <CameraRig scrollRef={scrollRef} freeLook={freeLook} lookRef={lookRef} />
       <OrbitControls
+        ref={controlsRef}
+        enabled={freeLook}
         enablePan={false}
         minDistance={6.5}
         maxDistance={26}
-        maxPolarAngle={Math.PI * 0.62}
-        autoRotate={autoRotate}
-        autoRotateSpeed={0.6}
+        maxPolarAngle={Math.PI * 0.72}
         enableDamping
         dampingFactor={0.06}
       />
@@ -444,56 +600,251 @@ function Scene({ breathing, autoRotate }: { breathing: boolean; autoRotate: bool
   )
 }
 
-// ---------- 页面组件 ----------
+/** Canvas 子树:props 全部稳定,滚动进度走 ref,避免高频重渲染 3D 树 */
+const SceneCanvas = memo(function SceneCanvas({ scrollRef, freeLook, lookRef, controlsRef }: {
+  scrollRef: RefObject<number>
+  freeLook: boolean
+  lookRef: RefObject<THREE.Vector3>
+  controlsRef: RefObject<ComponentRef<typeof OrbitControls> | null>
+}) {
+  return (
+    <Canvas
+      camera={{ position: [11.8, 5.4, 13.2], fov: 38 }}
+      dpr={[1, 1.75]}
+      gl={{ antialias: true, alpha: false }}
+      style={{ position: 'absolute', inset: 0 }}
+    >
+      <CanvasErrorTrap>
+        <Scene scrollRef={scrollRef} freeLook={freeLook} lookRef={lookRef} controlsRef={controlsRef} />
+      </CanvasErrorTrap>
+    </Canvas>
+  )
+})
+
+// ---------- 页面:粘性画布 + 滚动分镜文案 ----------
+const SECTIONS = [
+  { eyebrow: 'NEXUS SANCTUARY — 01', align: 'left' as const },
+  { eyebrow: '第一章 · 星灵', align: 'right' as const },
+  { eyebrow: '第二章 · 生态', align: 'left' as const },
+  { eyebrow: '终章 · 呼吸', align: 'center' as const },
+]
+
+function CapsuleButton({ children, onClick, primary }: { children: ReactNode; onClick: () => void; primary?: boolean }) {
+  return (
+    <button
+      onClick={onClick}
+      className={cn(
+        'pointer-events-auto cursor-pointer rounded-full px-7 py-3 text-sm font-medium tracking-wide backdrop-blur-md transition-all duration-300',
+        primary
+          ? 'neon-gradient-bg glow-cyan text-white shadow-lg shadow-cyan-500/25 hover:scale-[1.04]'
+          : 'border border-white/20 bg-white/5 text-white/85 hover:border-white/45 hover:bg-white/10',
+      )}
+    >
+      {children}
+    </button>
+  )
+}
+
 export default function SanctuaryScene() {
-  const [breathing, setBreathing] = useState(true)
-  const [autoRotate, setAutoRotate] = useState(true)
+  const navigate = useNavigate()
+  const [freeLook, setFreeLook] = useState(false)
+  const [progress, setProgress] = useState(0)
+  const scrollRef = useRef(0)
+  const containerRef = useRef<HTMLDivElement>(null)
+  const lookRef = useRef(new THREE.Vector3(0, 0.6, 0))
+  const controlsRef = useRef<ComponentRef<typeof OrbitControls> | null>(null)
+
+  // 进入自由视角时,让控制器从当前注视点接管,避免镜头跳切
+  useEffect(() => {
+    if (freeLook && controlsRef.current && lookRef.current) {
+      controlsRef.current.target.copy(lookRef.current)
+      controlsRef.current.update()
+    }
+  }, [freeLook])
+
+  const handleScroll = () => {
+    const el = containerRef.current
+    if (!el) return
+    const max = Math.max(1, el.scrollHeight - el.clientHeight)
+    const p = el.scrollTop / max
+    scrollRef.current = p
+    // 状态只用于圆点指示器,粗粒度更新即可
+    setProgress((prev) => (Math.abs(prev - p) > 0.01 ? p : prev))
+  }
+
+  const activeSection = Math.min(SECTIONS.length - 1, Math.round(progress * (SECTIONS.length - 1)))
+
+  const scrollToSection = (i: number) => {
+    const el = containerRef.current
+    if (!el) return
+    el.scrollTo({ top: i * el.clientHeight, behavior: 'smooth' })
+  }
+
+  const sectionAlignClass = (align: (typeof SECTIONS)[number]['align']) =>
+    align === 'left' ? 'justify-start text-left' : align === 'right' ? 'justify-end text-left' : 'justify-center text-center'
 
   return (
-    <div className="relative h-[calc(100dvh-13.5rem)] min-h-[460px] overflow-hidden rounded-2xl border border-line-2">
-      <Canvas
-        camera={{ position: [9.5, 5.2, 11.5], fov: 40 }}
-        dpr={[1, 1.75]}
-        gl={{ antialias: true, alpha: false }}
-      >
-        <CanvasErrorTrap>
-          <Scene breathing={breathing} autoRotate={autoRotate} />
-        </CanvasErrorTrap>
-      </Canvas>
+    <div
+      ref={containerRef}
+      onScroll={handleScroll}
+      className="relative h-full overflow-y-auto overflow-x-hidden bg-ink-950"
+      style={{ scrollbarWidth: 'none' }}
+    >
+      {/* 第 1 层:粘性画布(滚动时保持满屏) */}
+      <div className="sticky top-0 w-full" style={{ height: VIEW_H }}>
+        <SceneCanvas scrollRef={scrollRef} freeLook={freeLook} lookRef={lookRef} controlsRef={controlsRef} />
+        {/* 上下暗角,保证文字可读 */}
+        <div className="pointer-events-none absolute inset-x-0 top-0 h-28 bg-gradient-to-b from-ink-950/70 to-transparent" />
+        <div className="pointer-events-none absolute inset-x-0 bottom-0 h-32 bg-gradient-to-t from-ink-950/70 to-transparent" />
 
-      {/* 覆盖 UI */}
-      <div className="pointer-events-none absolute inset-x-0 top-0 flex items-start justify-between p-5">
-        <div>
-          <p className="neon-gradient-text text-xl font-bold tracking-widest">云鲸圣域</p>
-          <p className="mt-1 text-[11px] leading-relaxed text-txt-muted">
-            封存在玻璃中的一座微缩生态 · 云鲸星灵正沿梦境巡游
-          </p>
+        {/* 品牌栏 */}
+        <div className="pointer-events-none absolute inset-x-0 top-0 flex items-center justify-between px-6 py-4 md:px-10">
+          <div className="flex items-center gap-3">
+            <span className="neon-gradient-bg glow-cyan flex h-8 w-8 items-center justify-center rounded-full text-xs font-bold text-white">
+              N
+            </span>
+            <div>
+              <p className="text-sm font-bold tracking-[0.22em] text-white">NEXUS · 1</p>
+              <p className="text-[10px] tracking-[0.3em] text-white/50">SANCTUARY</p>
+            </div>
+          </div>
+          <div className="pointer-events-auto flex items-center gap-2">
+            <button
+              onClick={() => setFreeLook((v) => !v)}
+              className={cn(
+                'cursor-pointer rounded-full border px-4 py-2 text-[11px] tracking-wider backdrop-blur-md transition-all',
+                freeLook
+                  ? 'border-accent bg-accent-soft text-accent'
+                  : 'border-white/20 bg-white/5 text-white/75 hover:border-white/40',
+              )}
+            >
+              {freeLook ? '✓ 自由视角 · 拖拽旋转' : '自由视角'}
+            </button>
+            <button
+              onClick={() => navigate('/')}
+              className="cursor-pointer rounded-full border border-white/20 bg-white/5 px-4 py-2 text-[11px] tracking-wider text-white/75 backdrop-blur-md transition-all hover:border-white/40"
+            >
+              进入工作台
+            </button>
+          </div>
         </div>
-        <div className="pointer-events-auto flex gap-2">
-          <button
-            onClick={() => setBreathing((v) => !v)}
-            className={cn(
-              'cursor-pointer rounded-xl border px-3 py-1.5 text-[11px] transition-colors',
-              breathing ? 'border-accent bg-accent-soft text-accent' : 'border-line-2 bg-surface-1 text-txt-muted hover:text-txt-secondary',
-            )}
-          >
-            {breathing ? '呼吸律动中' : '呼吸已静默'}
-          </button>
-          <button
-            onClick={() => setAutoRotate((v) => !v)}
-            className={cn(
-              'cursor-pointer rounded-xl border px-3 py-1.5 text-[11px] transition-colors',
-              autoRotate ? 'border-accent bg-accent-soft text-accent' : 'border-line-2 bg-surface-1 text-txt-muted hover:text-txt-secondary',
-            )}
-          >
-            {autoRotate ? '自动旋转' : '旋转已停'}
-          </button>
+
+        {/* 右侧分镜圆点导航 */}
+        <div className="pointer-events-auto absolute top-1/2 right-4 flex -translate-y-1/2 flex-col items-center gap-3 md:right-7">
+          {SECTIONS.map((s, i) => (
+            <button
+              key={s.eyebrow}
+              onClick={() => scrollToSection(i)}
+              title={s.eyebrow}
+              className={cn(
+                'cursor-pointer rounded-full transition-all duration-300',
+                i === activeSection
+                  ? 'h-6 w-2 bg-cyan-300 shadow-[0_0_10px_rgba(103,232,249,0.8)]'
+                  : 'h-2 w-2 bg-white/25 hover:bg-white/60',
+              )}
+            />
+          ))}
+        </div>
+
+        {/* 底部滚动提示(离开首屏即淡出) */}
+        <div
+          className="pointer-events-none absolute inset-x-0 bottom-6 flex flex-col items-center gap-1.5 transition-opacity duration-500"
+          style={{ opacity: Math.max(0, 1 - progress * 6) }}
+        >
+          <span className="text-[10px] tracking-[0.4em] text-white/60">滚动 · 开始巡礼</span>
+          <span className="animate-bounce text-white/70">↓</span>
         </div>
       </div>
-      <div className="pointer-events-none absolute inset-x-0 bottom-0 flex items-end justify-between p-5">
-        <p className="rounded-xl border border-line-2 bg-ink-900/60 px-3 py-1.5 text-[11px] text-txt-muted backdrop-blur">
-          🖱️ 拖拽旋转 · 滚轮缩放 · 它在玻璃里等你很久了
-        </p>
+
+      {/* 第 2 层:分镜文案(叠在画布上滚动) */}
+      <div className="relative z-10" style={{ marginTop: 'calc(3.5rem - 100dvh)' }}>
+        {/* 序章 */}
+        <section
+          className={cn('flex items-center px-8 md:px-24', sectionAlignClass(SECTIONS[0].align))}
+          style={{ minHeight: VIEW_H }}
+        >
+          <div className="pointer-events-none max-w-2xl">
+            <p className="mb-5 inline-block rounded-full border border-cyan-300/30 bg-cyan-300/10 px-4 py-1.5 text-[11px] tracking-[0.35em] text-cyan-200/90">
+              {SECTIONS[0].eyebrow}
+            </p>
+            <h1 className="text-5xl leading-[1.12] font-bold tracking-wide text-white md:text-7xl">
+              为纯粹专注,
+              <br />
+              留一座<span className="neon-gradient-text">圣域</span>。
+            </h1>
+            <p className="mt-3 text-sm tracking-[0.2em] text-white/45 md:text-base">CRAFTED FOR PURE FOCUS.</p>
+            <p className="mt-6 max-w-md text-sm leading-relaxed text-white/70 md:text-[15px]">
+              一头云鲸星灵,一座微缩生态,封存在玻璃立方体中。
+              一道光环昼夜巡游,替你记住每一次专注的呼吸。
+            </p>
+            <div className="mt-10 flex flex-wrap gap-4">
+              <CapsuleButton primary onClick={() => navigate('/')}>
+                进入工作台 →
+              </CapsuleButton>
+              <CapsuleButton onClick={() => navigate('/focus')}>开始专注</CapsuleButton>
+            </div>
+          </div>
+        </section>
+
+        {/* 第一章 · 星灵 */}
+        <section
+          className={cn('flex items-center px-8 md:px-24', sectionAlignClass(SECTIONS[1].align))}
+          style={{ minHeight: VIEW_H }}
+        >
+          <div className="pointer-events-none max-w-xl">
+            <p className="mb-4 text-[11px] tracking-[0.4em] text-cyan-200/80">{SECTIONS[1].eyebrow}</p>
+            <h2 className="text-4xl leading-tight font-bold tracking-wide text-white md:text-6xl">
+              八字巡游的<span className="neon-gradient-text">梦</span>。
+            </h2>
+            <p className="mt-6 text-sm leading-relaxed text-white/70 md:text-[15px]">
+              云鲸星灵沿 8 字轨迹在玻璃中巡游,尾鳍摆动,心核随呼吸明灭。
+              它不催促、不打扰,只是安静地陪你,把漫长的专注变成一场巡游。
+            </p>
+          </div>
+        </section>
+
+        {/* 第二章 · 生态 */}
+        <section
+          className={cn('flex items-center px-8 md:px-24', sectionAlignClass(SECTIONS[2].align))}
+          style={{ minHeight: VIEW_H }}
+        >
+          <div className="pointer-events-none max-w-xl">
+            <p className="mb-4 text-[11px] tracking-[0.4em] text-cyan-200/80">{SECTIONS[2].eyebrow}</p>
+            <h2 className="text-4xl leading-tight font-bold tracking-wide text-white md:text-6xl">
+              雪山融水,
+              <br />
+              星光成<span className="neon-gradient-text">瀑</span>。
+            </h2>
+            <p className="mt-6 text-sm leading-relaxed text-white/70 md:text-[15px]">
+              微缩雪山、发光河流、呼吸的湖泊与坠落的星光瀑布,
+              悬浮小岛环绕,自成循环——一座只属于你的生态,在玻璃里生生不息。
+            </p>
+          </div>
+        </section>
+
+        {/* 终章 · 呼吸 */}
+        <section
+          className={cn('flex items-center px-8 md:px-24', sectionAlignClass(SECTIONS[3].align))}
+          style={{ minHeight: VIEW_H }}
+        >
+          <div className="pointer-events-none max-w-2xl">
+            <p className="mb-4 text-[11px] tracking-[0.4em] text-cyan-200/80">{SECTIONS[3].eyebrow}</p>
+            <h2 className="text-4xl leading-tight font-bold tracking-wide text-white md:text-6xl">
+              它在玻璃里,
+              <br />
+              等你<span className="neon-gradient-text">很久</span>了。
+            </h2>
+            <p className="mt-6 text-sm leading-relaxed text-white/70 md:text-[15px]">
+              ELEVATE YOUR FOCUS THROUGH TIMELESS RESONANCE.
+            </p>
+            <div className="mt-10 flex flex-wrap justify-center gap-4">
+              <CapsuleButton primary onClick={() => navigate('/')}>
+                回到工作台
+              </CapsuleButton>
+              <CapsuleButton onClick={() => setFreeLook(true)}>自由视角探索</CapsuleButton>
+            </div>
+          </div>
+        </section>
       </div>
     </div>
   )

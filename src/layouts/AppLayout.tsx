@@ -327,9 +327,14 @@ export function AppLayout() {
         </header>
 
         <main className="min-h-0 flex-1 overflow-y-auto">
-          <div className="mx-auto max-w-7xl p-6">
+          {/* 圣域展厅:全出血电影感布局,自己管理滚动 */}
+          {location.pathname === '/sanctuary' ? (
             <Outlet />
-          </div>
+          ) : (
+            <div className="mx-auto max-w-7xl p-6">
+              <Outlet />
+            </div>
+          )}
         </main>
       </div>
 
