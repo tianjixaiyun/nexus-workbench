@@ -1,32 +1,52 @@
+import { Suspense, lazy } from 'react'
+import { Loader2 } from 'lucide-react'
 import { BrowserRouter, Route, Routes } from 'react-router'
 import { AppLayout } from '@/layouts/AppLayout'
-import LandingPage from '@/pages/LandingPage'
-import PortfolioPage from '@/pages/PortfolioPage'
-import AchievementsPage from '@/pages/AchievementsPage'
-import ScrapbookPage from '@/pages/ScrapbookPage'
-import MemosPage from '@/pages/MemosPage'
-import ExpensePage from '@/pages/ExpensePage'
-import AboutPage from '@/pages/AboutPage'
-import NotFoundPage from '@/pages/NotFoundPage'
+import DashboardPage from '@/pages/DashboardPage'
 import { KonamiEgg } from '@/components/fx/KonamiEgg'
 import { PinGuard } from '@/components/fx/PinGuard'
 import { FluidTrail } from '@/components/fx/FluidTrail'
 import { GlobalSkew } from '@/components/fx/motion'
 import { CustomCursor } from '@/components/fx/CustomCursor'
-import DashboardPage from '@/pages/DashboardPage'
-import TasksPage from '@/pages/TasksPage'
-import GoalsPage from '@/pages/GoalsPage'
-import SanctuaryPage from '@/pages/SanctuaryPage'
-import HabitsPage from '@/pages/HabitsPage'
-import FocusPage from '@/pages/FocusPage'
-import NotesPage from '@/pages/NotesPage'
-import StatsPage from '@/pages/StatsPage'
-import LinksPage from '@/pages/LinksPage'
-import TrashPage from '@/pages/TrashPage'
-import LoginPage from '@/pages/LoginPage'
 import { GlobalRipple, LiquidCurtain, DiveIntro } from '@/components/fx/overlays'
 import { BurstHost } from '@/components/fx/Burst'
 import { AchievementWatcher } from '@/components/fx/achievements'
+
+// 路由级懒加载:重资源页(three 945KB / echarts 552KB 等)按需拉取,
+// 直连工作台的访客不再为首页/圣域预载 3D 与图表库
+const TasksPage = lazy(() => import('@/pages/TasksPage'))
+const GoalsPage = lazy(() => import('@/pages/GoalsPage'))
+const HabitsPage = lazy(() => import('@/pages/HabitsPage'))
+const FocusPage = lazy(() => import('@/pages/FocusPage'))
+const NotesPage = lazy(() => import('@/pages/NotesPage'))
+const StatsPage = lazy(() => import('@/pages/StatsPage'))
+const LinksPage = lazy(() => import('@/pages/LinksPage'))
+const SanctuaryPage = lazy(() => import('@/pages/SanctuaryPage'))
+const TrashPage = lazy(() => import('@/pages/TrashPage'))
+const LoginPage = lazy(() => import('@/pages/LoginPage'))
+const PortfolioPage = lazy(() => import('@/pages/PortfolioPage'))
+const ScrapbookPage = lazy(() => import('@/pages/ScrapbookPage'))
+const AchievementsPage = lazy(() => import('@/pages/AchievementsPage'))
+const MemosPage = lazy(() => import('@/pages/MemosPage'))
+const ExpensePage = lazy(() => import('@/pages/ExpensePage'))
+const AboutPage = lazy(() => import('@/pages/AboutPage'))
+const NotFoundPage = lazy(() => import('@/pages/NotFoundPage'))
+// 海洋首页同样按需:three.js 只在真正访问首页时加载(下潜序幕会盖住加载期)
+const LandingPage = lazy(() => import('@/pages/LandingPage'))
+
+/** 全屏深色 fallback:首页加载期与下潜序幕无缝衔接 */
+function FullscreenFallback() {
+  return <div className="min-h-dvh bg-[#0d1c31]" />
+}
+
+function PageFallback() {
+  return (
+    <div className="flex h-full min-h-[60vh] items-center justify-center gap-3 text-txt-secondary">
+      <Loader2 className="animate-spin" size={20} />
+      <span className="text-sm">正在加载…</span>
+    </div>
+  )
+}
 
 export default function App() {
   return (
@@ -42,31 +62,32 @@ export default function App() {
       <KonamiEgg />
       <AchievementWatcher />
       <Routes>
-        <Route path="/login" element={<LoginPage />} />
+        <Route path="/login" element={<Suspense fallback={<PageFallback />}><LoginPage /></Suspense>} />
         {/* 个人网站首页:全屏海洋下潜叙事,独立于工作台外壳 */}
-        <Route path="/" element={<LandingPage />} />
+        <Route path="/" element={<Suspense fallback={<FullscreenFallback />}><LandingPage /></Suspense>} />
         {/* 作品集:个人网站对外展示页,同样独立全屏 */}
-        <Route path="/portfolio" element={<PortfolioPage />} />
+        <Route path="/portfolio" element={<Suspense fallback={<PageFallback />}><PortfolioPage /></Suspense>} />
         {/* 海面之上·手帐:剪贴簿风彩蛋页 */}
-        <Route path="/scrapbook" element={<ScrapbookPage />} />
+        <Route path="/scrapbook" element={<Suspense fallback={<PageFallback />}><ScrapbookPage /></Suspense>} />
         <Route element={<AppLayout />}>
+          {/* 工作台首屏 eager,其余页面按需加载 */}
           <Route path="home" element={<DashboardPage />} />
-          <Route path="tasks" element={<TasksPage />} />
-          <Route path="goals" element={<GoalsPage />} />
-          <Route path="habits" element={<HabitsPage />} />
-          <Route path="focus" element={<FocusPage />} />
-          <Route path="notes" element={<NotesPage />} />
-          <Route path="stats" element={<StatsPage />} />
-          <Route path="links" element={<LinksPage />} />
-          <Route path="sanctuary" element={<SanctuaryPage />} />
-          <Route path="trash" element={<TrashPage />} />
-          <Route path="achievements" element={<AchievementsPage />} />
-          <Route path="memos" element={<MemosPage />} />
-          <Route path="expense" element={<ExpensePage />} />
-          <Route path="about" element={<AboutPage />} />
+          <Route path="tasks" element={<Suspense fallback={<PageFallback />}><TasksPage /></Suspense>} />
+          <Route path="goals" element={<Suspense fallback={<PageFallback />}><GoalsPage /></Suspense>} />
+          <Route path="habits" element={<Suspense fallback={<PageFallback />}><HabitsPage /></Suspense>} />
+          <Route path="focus" element={<Suspense fallback={<PageFallback />}><FocusPage /></Suspense>} />
+          <Route path="notes" element={<Suspense fallback={<PageFallback />}><NotesPage /></Suspense>} />
+          <Route path="stats" element={<Suspense fallback={<PageFallback />}><StatsPage /></Suspense>} />
+          <Route path="links" element={<Suspense fallback={<PageFallback />}><LinksPage /></Suspense>} />
+          <Route path="sanctuary" element={<Suspense fallback={<PageFallback />}><SanctuaryPage /></Suspense>} />
+          <Route path="trash" element={<Suspense fallback={<PageFallback />}><TrashPage /></Suspense>} />
+          <Route path="achievements" element={<Suspense fallback={<PageFallback />}><AchievementsPage /></Suspense>} />
+          <Route path="memos" element={<Suspense fallback={<PageFallback />}><MemosPage /></Suspense>} />
+          <Route path="expense" element={<Suspense fallback={<PageFallback />}><ExpensePage /></Suspense>} />
+          <Route path="about" element={<Suspense fallback={<PageFallback />}><AboutPage /></Suspense>} />
         </Route>
         {/* 深海 404:未知路由不再静默跳转 */}
-        <Route path="*" element={<NotFoundPage />} />
+        <Route path="*" element={<Suspense fallback={<PageFallback />}><NotFoundPage /></Suspense>} />
       </Routes>
     </BrowserRouter>
   )

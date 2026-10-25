@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { Maximize2, Minimize2, Pause, Play, RotateCcw, SkipForward, Timer as TimerIcon, Volume2, VolumeX } from 'lucide-react'
+import { Maximize2, Minimize2, Pause, Play, RotateCcw, Settings2, SkipForward, Timer as TimerIcon, Volume2, VolumeX } from 'lucide-react'
 import { Card } from '@/components/ui/Card'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { Select } from '@/components/ui/Input'
@@ -13,11 +13,22 @@ import { useSettingsStore } from '@/stores/settingsStore'
 
 type Mode = 'work' | 'short' | 'long'
 
-const MODES: { value: Mode; label: string; minutes: number }[] = [
-  { value: 'work', label: '专注', minutes: 25 },
-  { value: 'short', label: '短休', minutes: 5 },
-  { value: 'long', label: '长休', minutes: 15 },
-]
+interface FocusConfig {
+  work: number
+  short: number
+  long: number
+  dailyGoal: number
+}
+
+const DEFAULT_CFG: FocusConfig = { work: 25, short: 5, long: 15, dailyGoal: 8 }
+
+function loadCfg(): FocusConfig {
+  try {
+    const c = JSON.parse(localStorage.getItem('nexus-focus-config') ?? 'null') as Partial<FocusConfig> | null
+    if (c && c.work && c.short && c.long && c.dailyGoal) return c as FocusConfig
+  } catch { /* 默认 */ }
+  return DEFAULT_CFG
+}
 
 const RADIUS = 130
 const CIRCUMFERENCE = 2 * Math.PI * RADIUS
@@ -31,6 +42,14 @@ function fmt(seconds: number): string {
 export function FocusView() {
   const tasks = useTaskStore((s) => s.tasks)
   const [mode, setMode] = useState<Mode>('work')
+  const [focusCfg, setFocusCfg] = useState<FocusConfig>(loadCfg)
+  const [cfgOpen, setCfgOpen] = useState(false)
+  const [cfgDraft, setCfgDraft] = useState<FocusConfig>(focusCfg)
+  const MODES = useMemo(() => [
+    { value: 'work' as const, label: '专注', minutes: focusCfg.work },
+    { value: 'short' as const, label: '短休', minutes: focusCfg.short },
+    { value: 'long' as const, label: '长休', minutes: focusCfg.long },
+  ], [focusCfg])
   const [remaining, setRemaining] = useState(MODES[0].minutes * 60)
   const [running, setRunning] = useState(false)
   const [taskId, setTaskId] = useState('')
@@ -162,6 +181,18 @@ export function FocusView() {
   }
 
   const progress = 1 - remaining / total
+  const applyCfg = () => {
+    const clamp = (n: number) => Math.max(1, Math.min(180, Math.round(n)) || 1)
+    const next = { work: clamp(cfgDraft.work), short: clamp(cfgDraft.short), long: clamp(cfgDraft.long), dailyGoal: Math.max(1, Math.min(50, Math.round(cfgDraft.dailyGoal)) || 1) }
+    setFocusCfg(next)
+    localStorage.setItem('nexus-focus-config', JSON.stringify(next))
+    if (!running) {
+      const m = next[mode]
+      setRemaining(m * 60)
+    }
+    setCfgOpen(false)
+  }
+
   const ringColor = mode === 'work' ? (light ? '#0891b2' : '#22d3ee') : light ? '#059669' : '#34d399'
   const week = recentSessions(7)
   const weekMax = Math.max(1, ...week.map((d) => d.count))
@@ -183,11 +214,44 @@ export function FocusView() {
             </button>
           ))}
         </div>
+        {cfgOpen && (
+          <div className="flex flex-wrap items-center gap-2 rounded-xl border border-line-2 bg-surface-1 px-4 py-3 text-xs">
+            {([['work', '专注'], ['short', '短休'], ['long', '长休']] as const).map(([k, label]) => (
+              <label key={k} className="flex items-center gap-1.5 text-txt-secondary">
+                {label}
+                <input
+                  type="number" min={1} max={180}
+                  value={cfgDraft[k]}
+                  onChange={(e) => setCfgDraft((d) => ({ ...d, [k]: Number(e.target.value) }))}
+                  className="w-14 rounded-md border border-line-2 bg-surface-2 px-2 py-1 font-mono outline-none focus:border-accent"
+                /> 分钟
+              </label>
+            ))}
+            <label className="flex items-center gap-1.5 text-txt-secondary">
+              每日目标
+              <input
+                type="number" min={1} max={50}
+                value={cfgDraft.dailyGoal}
+                onChange={(e) => setCfgDraft((d) => ({ ...d, dailyGoal: Number(e.target.value) }))}
+                className="w-14 rounded-md border border-line-2 bg-surface-2 px-2 py-1 font-mono outline-none focus:border-accent"
+              /> 个
+            </label>
+            <button onClick={applyCfg} className="cursor-pointer rounded-lg bg-accent px-3 py-1.5 font-medium text-white">保存</button>
+          </div>
+        )}
         <div className="flex items-center gap-3 text-xs text-txt-muted">
           <span className="flex items-center gap-1.5">
             <TimerIcon size={14} />
-            今天已完成 <span className="font-mono font-bold text-accent">{sessions}</span> 个番茄
+            今天已完成 <span className="font-mono font-bold text-accent">{sessions}</span>
+            <span className="text-txt-muted/70">/ {focusCfg.dailyGoal} 个番茄</span>
           </span>
+          <button
+            onClick={() => { setCfgDraft(focusCfg); setCfgOpen((v) => !v) }}
+            className={cn('cursor-pointer rounded-lg border px-2 py-1 transition-colors', cfgOpen ? 'border-accent bg-accent-soft text-accent' : 'border-line-2 hover:text-txt-secondary')}
+            title="自定义时长与每日目标"
+          >
+            <Settings2 size={13} />
+          </button>
           <span className="flex items-center gap-1.5">
             <button
               onClick={toggleNoise}

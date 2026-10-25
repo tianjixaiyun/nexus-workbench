@@ -1,8 +1,9 @@
 import { useMemo, useState } from 'react'
-import { FolderOpen, Loader2, Plus } from 'lucide-react'
+import { FolderOpen, Loader2, Plus, Search } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import { EmptyState } from '@/components/ui/EmptyState'
+import { Input } from '@/components/ui/Input'
 import type { LinkItem } from '@/lib/data/types'
 import { useLinkStore } from '@/stores/linkStore'
 import { LinkCard } from '@/features/links/LinkCard'
@@ -13,16 +14,21 @@ export default function LinksPage() {
   const [modalOpen, setModalOpen] = useState(false)
   const [editing, setEditing] = useState<LinkItem | null>(null)
   const [deleteId, setDeleteId] = useState<string | null>(null)
+  const [search, setSearch] = useState('')
 
   const groups = useMemo(() => {
+    const kw = search.trim().toLowerCase()
+    const filtered = kw
+      ? links.filter((l) => `${l.name} ${l.url} ${l.group}`.toLowerCase().includes(kw))
+      : links
     const map = new Map<string, LinkItem[]>()
-    for (const link of links) {
+    for (const link of filtered) {
       const list = map.get(link.group) ?? []
       list.push(link)
       map.set(link.group, list)
     }
     return [...map.entries()]
-  }, [links])
+  }, [links, search])
 
   const groupNames = useMemo(() => [...new Set(links.map((l) => l.group))], [links])
 
@@ -47,12 +53,25 @@ export default function LinksPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex justify-end">
-        <Button variant="primary" onClick={openCreate}>
+      <div className="flex items-center gap-2">
+        <div className="relative min-w-0 flex-1">
+          <Search size={15} className="absolute top-1/2 left-3 -translate-y-1/2 text-txt-muted" />
+          <Input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder={`搜索 ${links.length} 个链接…`}
+            className="pl-9"
+          />
+        </div>
+        <Button variant="primary" onClick={openCreate} className="shrink-0">
           <Plus size={15} />
           添加链接
         </Button>
       </div>
+
+      {links.length > 0 && groups.length === 0 && (
+        <EmptyState icon={Search} title="没有匹配的链接" hint="换个关键词试试" />
+      )}
 
       {links.length === 0 ? (
         <EmptyState
