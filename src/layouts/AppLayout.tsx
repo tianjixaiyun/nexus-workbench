@@ -24,7 +24,7 @@ import {
   Wrench,
   Zap,
 } from 'lucide-react'
-import { cn } from '@/lib/utils'
+import { cn, todayStr } from '@/lib/utils'
 import { isCloudMode } from '@/lib/config'
 import { startRealtime } from '@/lib/data/realtime'
 import { requestAction } from '@/lib/uiBus'
@@ -99,12 +99,14 @@ function Clock() {
 export function AppLayout() {
   const { user, ready, init, signOut } = useAuthStore()
   const theme = useSettingsStore((s) => s.theme)
+  const allTasks = useTaskStore((st) => st.tasks)
   const setTheme = useSettingsStore((s) => s.setTheme)
   const [collapsed, setCollapsed] = useState(false)
   const [paletteOpen, setPaletteOpen] = useState(false)
   const [helpOpen, setHelpOpen] = useState(false)
   const [quickOpen, setQuickOpen] = useState(false)
   const [assistantOpen, setAssistantOpen] = useState(false)
+  const [dueDismissed, setDueDismissed] = useState(() => sessionStorage.getItem('nexus-due-dismissed') === '1')
   const location = useLocation()
   const navigate = useNavigate()
 
@@ -369,6 +371,43 @@ export function AppLayout() {
             )}
           </div>
         </header>
+
+        {/* 到期提醒:逾期/今日到期任务,每次会话提醒一次(Todoist 式温和提示) */}
+        {(() => {
+          if (dueDismissed) return null
+          const today = todayStr()
+          const undone = allTasks.filter((t) => t.status !== 'done' && !t.deletedAt && t.dueDate)
+          const overdue = undone.filter((t) => t.dueDate! < today)
+          const dueToday = undone.filter((t) => t.dueDate === today)
+          if (!overdue.length && !dueToday.length) return null
+          return (
+            <div className="flex shrink-0 items-center gap-3 border-b border-warn/25 bg-warn/10 px-6 py-2 text-xs">
+              <span className="text-warn">⏰</span>
+              <span className="text-txt-secondary">
+                {overdue.length > 0 && <><b className="text-warn">{overdue.length}</b> 项已逾期</>}
+                {overdue.length > 0 && dueToday.length > 0 && <span className="mx-1.5 text-txt-muted">·</span>}
+                {dueToday.length > 0 && <><b className="text-warn">{dueToday.length}</b> 项今日到期</>}
+                <span className="ml-1 text-txt-muted">——去处理一下?</span>
+              </span>
+              <button
+                onClick={() => navigate('/tasks')}
+                className="cursor-pointer rounded-md bg-warn/20 px-2.5 py-1 font-medium text-warn transition-colors hover:bg-warn/30"
+              >
+                查看
+              </button>
+              <button
+                onClick={() => {
+                  setDueDismissed(true)
+                  sessionStorage.setItem('nexus-due-dismissed', '1')
+                }}
+                className="ml-auto cursor-pointer text-txt-muted transition-colors hover:text-txt-secondary"
+                title="本次会话不再提醒"
+              >
+                ✕
+              </button>
+            </div>
+          )
+        })()}
 
         <main className="min-h-0 flex-1 overflow-y-auto">
           {/* 圣域展厅:全出血电影感布局,自己管理滚动 */}

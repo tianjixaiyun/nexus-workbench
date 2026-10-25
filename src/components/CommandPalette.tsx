@@ -1,4 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { useMemoStore } from '@/stores/memoStore'
+import { useWorkStore } from '@/stores/workStore'
+import { useExpenseStore } from '@/stores/expenseStore'
 import { createPortal } from 'react-dom'
 import { useNavigate } from 'react-router'
 import {
@@ -27,7 +30,7 @@ import { useLinkStore } from '@/stores/linkStore'
 
 interface PaletteItem {
   key: string
-  group: '页面' | '操作' | '任务' | '笔记' | '链接'
+  group: '页面' | '操作' | '任务' | '笔记' | '链接' | '数据'
   label: string
   hint?: string
   keywords: string
@@ -137,6 +140,45 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
           }))
       : []
     if (!kw) return items
+    // 全文数据搜索(AFFiNE 式):任务/笔记/碎碎念/作品/记账 备注
+    if (kw.length >= 1) {
+      const data: PaletteItem[] = []
+      const push = (max: number, arr: { label: string; keywords: string; icon: React.ReactNode; run: () => void }[]) => {
+        for (const it of arr) { if (data.length < 8 && `${it.label} ${it.keywords}`.toLowerCase().includes(kw)) data.push({ ...it, group: '数据' } as PaletteItem) }
+        void max
+      }
+      push(4, useTaskStore.getState().tasks.filter((t) => !t.deletedAt).map((t) => ({
+        label: t.title,
+        keywords: `任务 ${t.status} ${(t.tags ?? []).join(' ')} ${t.description ?? ''}`,
+        icon: <ListChecks size={15} />,
+        run: () => { navigate('/tasks'); onClose() },
+      })))
+      push(3, useNoteStore.getState().notes.map((n) => ({
+        label: n.title,
+        keywords: `笔记 ${n.content.slice(0, 60)}`,
+        icon: <StickyNote size={15} />,
+        run: () => { navigate('/notes'); onClose() },
+      })))
+      push(3, useMemoStore.getState().memos.map((m) => ({
+        label: m.content.slice(0, 24),
+        keywords: `碎碎念 ${m.content} ${m.tags.join(' ')}`,
+        icon: <StickyNote size={15} />,
+        run: () => { navigate('/memos'); onClose() },
+      })))
+      push(2, useWorkStore.getState().works.map((w) => ({
+        label: w.title,
+        keywords: `作品 ${w.category} ${w.year} ${w.description}`,
+        icon: <Wrench size={15} />,
+        run: () => { navigate('/portfolio'); onClose() },
+      })))
+      push(2, useExpenseStore.getState().expenses.map((e) => ({
+        label: `${e.kind === 'expense' ? '支出' : '收入'} ¥${e.amount} ${e.category}`,
+        keywords: `记账 ${e.note} ${e.category}`,
+        icon: <BarChart3 size={15} />,
+        run: () => { navigate('/expense'); onClose() },
+      })))
+      return [...data, ...bangs, ...items.filter((i) => `${i.label} ${i.keywords}`.toLowerCase().includes(kw))]
+    }
     return [...bangs, ...items.filter((i) => `${i.label} ${i.keywords}`.toLowerCase().includes(kw))]
   }, [items, query, onClose])
 

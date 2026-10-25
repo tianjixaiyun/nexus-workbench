@@ -1,6 +1,6 @@
 import { splashGold } from '@/components/fx/Burst'
 import { useMemo, useState } from 'react'
-import { Calendar, CheckCircle2, ListChecks, Pencil, Search, Tag, Timer, Trash2 } from 'lucide-react'
+import { Calendar, Check, CheckCircle2, ListChecks, Pencil, Search, Tag, Timer, Trash2 } from 'lucide-react'
 import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
@@ -19,6 +19,8 @@ interface TaskListProps {
 export function TaskList({ onEdit }: TaskListProps) {
   const allTasks = useTaskStore((s) => s.tasks)
   const toggleDone = useTaskStore((s) => s.toggleDone)
+  const [bulkMode, setBulkMode] = useState(false)
+  const [selected, setSelected] = useState<Set<string>>(new Set())
   const toggleSubtask = useTaskStore((s) => s.toggleSubtask)
   const softDelete = useTaskStore((s) => s.softDelete)
   const tasks = useMemo(() => activeTasks(allTasks), [allTasks])
@@ -51,8 +53,44 @@ export function TaskList({ onEdit }: TaskListProps) {
 
   return (
     <div className="flex flex-col gap-4">
+      {/* 批量操作条 */}
+      {bulkMode && (
+        <div className="flex items-center gap-2 rounded-xl border border-accent/30 bg-accent-soft/40 px-3 py-2">
+          <span className="text-xs text-accent">已选 {selected.size} 项</span>
+          <button
+            onClick={() => {
+              for (const id of selected) { const t = tasks.find((x) => x.id === id); if (t && t.status !== 'done') void toggleDone(id) }
+              setSelected(new Set())
+            }}
+            disabled={selected.size === 0}
+            className="cursor-pointer rounded-lg bg-accent px-3 py-1 text-xs text-white disabled:opacity-40"
+          >
+            批量完成
+          </button>
+          <button
+            onClick={async () => {
+              if (!confirm(`删除选中的 ${selected.size} 项?(移入回收站)`)) return
+              for (const id of selected) await softDelete(id)
+              setSelected(new Set())
+            }}
+            disabled={selected.size === 0}
+            className="cursor-pointer rounded-lg border border-danger/40 px-3 py-1 text-xs text-danger disabled:opacity-40"
+          >
+            批量删除
+          </button>
+          <button onClick={() => { setBulkMode(false); setSelected(new Set()) }} className="ml-auto cursor-pointer text-xs text-txt-muted hover:text-txt-secondary">
+            退出批量
+          </button>
+        </div>
+      )}
+
       {/* 筛选栏 */}
       <div className="flex flex-wrap items-center gap-2">
+        {!bulkMode && (
+          <button onClick={() => setBulkMode(true)} className="cursor-pointer rounded-xl border border-line-2 px-3 py-2 text-xs text-txt-muted transition-colors hover:border-accent hover:text-accent">
+            批量
+          </button>
+        )}
         <div className="relative min-w-52 flex-1">
           <Search size={15} className="absolute top-1/2 left-3 -translate-y-1/2 text-txt-muted" />
           <Input
@@ -98,9 +136,14 @@ export function TaskList({ onEdit }: TaskListProps) {
             return (
               <div
                 key={task.id}
-                onClick={() => onEdit(task)}
-                className="glass-card glass-card-hover group flex cursor-pointer items-center gap-3 px-4 py-3"
+                onClick={() => { if (bulkMode) { setSelected((prev) => { const n = new Set(prev); if (n.has(task.id)) n.delete(task.id); else n.add(task.id); return n }) } else onEdit(task) }}
+                className={'glass-card glass-card-hover group flex cursor-pointer items-center gap-3 px-4 py-3' + (bulkMode && selected.has(task.id) ? ' border-accent/60 bg-accent-soft/25' : '')}
               >
+                {bulkMode && (
+                  <span className={'flex h-5 w-5 shrink-0 items-center justify-center rounded-md border ' + (selected.has(task.id) ? 'neon-gradient-bg border-transparent' : 'border-line-strong')}>
+                    {selected.has(task.id) && <Check size={12} className="text-white" />}
+                  </span>
+                )}
                 <button
                   onClick={(e) => {
                     e.stopPropagation()
