@@ -7,6 +7,7 @@ import ScrapbookPage from '@/pages/ScrapbookPage'
 import MemosPage from '@/pages/MemosPage'
 import ExpensePage from '@/pages/ExpensePage'
 import { PinGuard } from '@/components/fx/PinGuard'
+import { FluidTrail } from '@/components/fx/FluidTrail'
 import { CustomCursor } from '@/components/fx/CustomCursor'
 import DashboardPage from '@/pages/DashboardPage'
 import TasksPage from '@/pages/TasksPage'
@@ -32,6 +33,7 @@ export default function App() {
       <DiveIntro />
       <CustomCursor />
       <PinGuard />
+      <FluidTrail />
       <AchievementWatcher />
       <Routes>
         <Route path="/login" element={<LoginPage />} />
