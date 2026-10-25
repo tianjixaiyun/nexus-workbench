@@ -6,6 +6,7 @@ import { useNavigate } from 'react-router'
 import { CanvasErrorTrap } from '@/features/sanctuary/CanvasErrorTrap'
 import { ScrambleText, Magnetic } from '@/components/fx/micro'
 import { BlurText, Marquee } from '@/components/fx/bits'
+import { ParticleField } from '@/components/fx/ParticleField'
 import { liquidNavigate } from '@/components/fx/overlays'
 import { burst } from '@/components/fx/Burst'
 import { whaleCall } from '@/lib/whaleCall'
@@ -644,6 +645,19 @@ export default function OceanLanding() {
         {/* 上下暗角保证文字可读 */}
         <div className="pointer-events-none absolute inset-x-0 top-0 h-24 bg-gradient-to-b from-black/25 to-transparent" />
         <div className="pointer-events-none absolute inset-x-0 bottom-0 h-28 bg-gradient-to-t from-black/35 to-transparent" />
+
+        {/* 粒子英雄字:星尘汇聚成 NEXUS,鼠标可推开,随下潜淡出 */}
+        <div
+          className="pointer-events-none absolute inset-x-0 top-[8%] z-[2] h-[40%]"
+          style={{ opacity: Math.max(0, 1 - progress * 4.5) }}
+        >
+          <ParticleField
+            text="NEXUS"
+            className="h-full w-full"
+            density={typeof window !== 'undefined' && window.innerWidth < 768 ? 0.55 : 1}
+            opacity={night ? 0.95 : 0.8}
+          />
+        </div>
 
         {/* 顶部导航 */}
         <div className="pointer-events-none absolute inset-x-0 top-0 flex items-center justify-between px-6 py-5 md:px-10">
