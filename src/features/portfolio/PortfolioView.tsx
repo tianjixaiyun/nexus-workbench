@@ -6,6 +6,7 @@ import { useWorkStore } from '@/stores/workStore'
 import { seedWorks } from '@/lib/sample'
 import type { WorkItem } from '@/lib/data/types'
 import { ScrambleText, Magnetic, TiltCard, Reveal } from '@/components/fx/micro'
+import { HorizontalGallery, HeroImageTrail } from './portfolioFx'
 import { Marquee } from '@/components/fx/bits'
 
 /**
@@ -323,7 +324,8 @@ export default function PortfolioView() {
         </div>
       </header>
 
-      {/* Hero */}
+      {/* Hero(鼠标划过沿途弹出作品小图) */}
+      <HeroImageTrail works={works}>
       <section className="mx-auto max-w-6xl px-6 pt-20 pb-14 md:px-10 md:pt-28">
         <p className="font-mono text-xs tracking-[0.35em] text-black/45"><ScrambleText text={summary} delay={150} /></p>
         <h1 className="mt-6 text-6xl leading-[1.04] font-bold tracking-tight md:text-[7.5rem]" style={{ fontFamily: SERIF }}>
@@ -337,8 +339,18 @@ export default function PortfolioView() {
         </p>
       </section>
 
-      {/* 作品列表:序号行式 */}
-      <section ref={listRef} className="mx-auto max-w-6xl px-6 pb-24 md:px-10">
+      </HeroImageTrail>
+
+      {/* 横向长廊:垂直滚轮驱动横向位移 */}
+      {works.length > 0 && (
+        <HorizontalGallery
+          works={works}
+          onOpen={(i) => setDetailIndex(i)}
+        />
+      )}
+
+      {/* 作品列表:序号行式(整层随滚动速度轻微歪斜) */}
+      <section ref={listRef} className="mx-auto max-w-6xl px-6 pb-24 will-change-transform md:px-10" style={{ transform: 'skewY(var(--nexus-skew, 0deg))' }}>
         {loaded && works.length === 0 && (
           <div className="flex flex-col items-center gap-5 rounded-3xl border border-dashed border-black/20 py-20">
             <p className="text-sm text-black/50">还没有作品——先放几件示例找找感觉?</p>

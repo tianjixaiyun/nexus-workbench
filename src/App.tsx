@@ -9,6 +9,7 @@ import ExpensePage from '@/pages/ExpensePage'
 import AboutPage from '@/pages/AboutPage'
 import { PinGuard } from '@/components/fx/PinGuard'
 import { FluidTrail } from '@/components/fx/FluidTrail'
+import { GlobalSkew } from '@/components/fx/motion'
 import { CustomCursor } from '@/components/fx/CustomCursor'
 import DashboardPage from '@/pages/DashboardPage'
 import TasksPage from '@/pages/TasksPage'
@@ -35,6 +36,7 @@ export default function App() {
       <CustomCursor />
       <PinGuard />
       <FluidTrail />
+      <GlobalSkew />
       <AchievementWatcher />
       <Routes>
         <Route path="/login" element={<LoginPage />} />

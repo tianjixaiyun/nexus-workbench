@@ -651,6 +651,8 @@ export default function OceanLanding() {
     if (!h.loaded) void h.fetch()
   }, [])
   const containerRef = useRef<HTMLDivElement>(null)
+  const skewRef = useRef<HTMLDivElement>(null)
+  const skewState = useRef({ lastTop: 0, skew: 0, target: 0 })
 
   const handleScroll = () => {
     const el = containerRef.current
@@ -658,12 +660,28 @@ export default function OceanLanding() {
     const max = Math.max(1, el.scrollHeight - el.clientHeight)
     const p = el.scrollTop / max
     scrollRef.current = p
+    // 滚动速度 → 歪斜(与 GlobalSkew 同一套手感,容器内自算)
+    const sk = skewState.current
+    const vel = el.scrollTop - sk.lastTop
+    sk.lastTop = el.scrollTop
+    sk.target = Math.max(-3, Math.min(3, Math.max(-16, Math.min(16, vel)) * 0.26))
     setProgress((prev) => (Math.abs(prev - p) > 0.01 ? p : prev))
   }
 
   const scrollTo = (top: number) => {
     containerRef.current?.scrollTo({ top, behavior: 'smooth' })
   }
+
+  // 歪斜惯性:每帧向目标推进、目标自身衰减,停手回正
+  useEffect(() => {
+    const timer = window.setInterval(() => {
+      const sk = skewState.current
+      sk.skew += (sk.target - sk.skew) * 0.14
+      sk.target *= 0.86
+      if (skewRef.current) skewRef.current.style.transform = `skewY(${sk.skew.toFixed(3)}deg)`
+    }, 16)
+    return () => clearInterval(timer)
+  }, [])
 
   const depth = Math.round(progress * 40)
 
@@ -758,8 +776,8 @@ export default function OceanLanding() {
         </div>
       </div>
 
-      {/* 下潜分幕 */}
-      <div className="relative z-10" style={{ marginTop: 'calc(-100dvh)' }}>
+      {/* 下潜分幕(整层随滚动速度轻微歪斜) */}
+      <div ref={skewRef} className="relative z-10 will-change-transform" style={{ marginTop: 'calc(-100dvh)' }}>
         {/* 第一幕:海面之上 */}
         <section className="flex h-dvh items-center justify-center px-8 text-center">
           <div className="pointer-events-none max-w-3xl">
