@@ -6,6 +6,7 @@ import { useWorkStore } from '@/stores/workStore'
 import { seedWorks } from '@/lib/sample'
 import type { WorkItem } from '@/lib/data/types'
 import { ScrambleText, Magnetic, TiltCard, Reveal } from '@/components/fx/micro'
+import { Marquee } from '@/components/fx/bits'
 
 /**
  * 作品集 · 编辑杂志风(浅色纸面,与主站的深色数字海洋形成"翻开画册"的反差)
@@ -327,7 +328,9 @@ export default function PortfolioView() {
         <p className="font-mono text-xs tracking-[0.35em] text-black/45"><ScrambleText text={summary} delay={150} /></p>
         <h1 className="mt-6 text-6xl leading-[1.04] font-bold tracking-tight md:text-[7.5rem]" style={{ fontFamily: SERIF }}>
           作品<span className="italic">集</span>
-          <span className="mt-3 block text-base font-normal tracking-[0.5em] text-black/45 md:text-xl"><ScrambleText text="SELECTED WORKS" delay={600} /></span>
+          <span className="mt-3 block text-base font-normal tracking-[0.5em] text-transparent md:text-xl" style={{ WebkitTextStroke: '1.5px rgba(20,22,26,0.55)' }}>
+            <ScrambleText text="SELECTED WORKS" delay={600} />
+          </span>
         </h1>
         <p className="mt-8 max-w-md text-sm leading-relaxed text-black/60">
           {about || '这里收录我的作品与项目——网页、三维、界面与实验。每一件都是一次向深处下潜。'}
@@ -397,15 +400,48 @@ export default function PortfolioView() {
         )}
       </section>
 
-      {/* 悬浮预览(桌面端,编辑模式外) */}
-      {hoverPreview && (
+      {/* 桌面端:hover 联动的粘性大图预览窗(获奖站式联动) */}
+      <div className="pointer-events-none fixed right-[9%] top-1/2 z-20 hidden w-[30rem] -translate-y-1/2 md:block" aria-hidden>
+        <div
+          className="relative aspect-[16/10] overflow-hidden rounded-2xl border border-black/10 shadow-[0_30px_80px_rgba(20,22,26,0.28)] transition-all duration-500"
+          style={{ opacity: hoverPreview && hoverPreview.x > -900 ? 1 : 0, transform: hoverPreview && hoverPreview.x > -900 ? 'rotate(2deg) scale(1)' : 'rotate(4deg) scale(0.92)' }}
+        >
+          {works.map((w) => (
+            <img
+              key={w.id}
+              src={w.images[0]}
+              alt=""
+              className="absolute inset-0 h-full w-full object-cover transition-opacity duration-500"
+              style={{ opacity: hoverPreview && hoverPreview.src === w.images[0] ? 1 : 0 }}
+            />
+          ))}
+          <div className="absolute inset-0 bg-gradient-to-t from-black/25 to-transparent" />
+        </div>
+      </div>
+
+      {/* 悬浮预览(移动端兜底,编辑模式外) */}
+      {hoverPreview && hoverPreview.x > -900 && (
         <img
           src={hoverPreview.src}
           alt=""
-          className="pointer-events-none fixed z-20 hidden w-72 rotate-2 rounded-xl border border-black/10 shadow-2xl md:block"
-          style={{ left: hoverPreview.x + 24, top: hoverPreview.y - 100 }}
+          className="pointer-events-none fixed z-20 w-64 rotate-2 rounded-xl border border-black/10 shadow-2xl md:hidden"
+          style={{ left: Math.min(hoverPreview.x + 24, window.innerWidth - 280), top: hoverPreview.y - 100 }}
         />
       )}
+
+      {/* 大字跑马灯分隔带 */}
+      <div className="mx-auto mb-16 max-w-6xl border-y border-black/12 py-4 md:px-10">
+        <Marquee
+          speed={34}
+          className="[mask-image:linear-gradient(to_right,transparent,black_12%,black_88%,transparent)]"
+          items={['网页设计', 'WEB', '三维交互', '3D', '产品设计', 'PRODUCT', '视觉实验', 'EXPERIMENT'].map((t, i) => (
+            <span key={i} className="flex items-center gap-4">
+              <span className="text-3xl font-bold tracking-wide text-black/80 md:text-5xl" style={{ fontFamily: SERIF }}>{t}</span>
+              <span className="text-xl text-black/25 md:text-2xl">✦</span>
+            </span>
+          ))}
+        />
+      </div>
 
       {/* 关于:玻璃卡 */}
       <section className="mx-auto max-w-6xl px-6 pb-24 md:px-10">
@@ -445,12 +481,16 @@ export default function PortfolioView() {
       <footer className="border-t border-black/10 bg-[#14161a] px-6 py-20 text-[#f6f4ef] md:py-28">
         <div className="mx-auto max-w-6xl md:px-4">
           <h2 className="text-5xl leading-[1.02] font-bold tracking-tight md:text-[6.5rem]" style={{ fontFamily: SERIF }}>
-            LET'S
+            <span className="nexus-footer-word inline-block">LET'S</span>
             <br />
-            WORK
+            <span className="nexus-footer-word inline-block">WORK</span>
             <br />
-            <span className="italic">TOGETHER.</span>
+            <span className="nexus-footer-word inline-block italic">TOGETHER.</span>
           </h2>
+          <style>{`
+            .nexus-footer-word { transition: color .35s ease, transform .35s cubic-bezier(.2,.9,.3,1.4), text-shadow .35s ease }
+            .nexus-footer-word:hover { color: #7ce7ff; transform: skewX(-6deg) scale(1.04); text-shadow: 0 0 40px rgba(124,231,255,.45) }
+          `}</style>
           <div className="mt-12 flex flex-col gap-6 md:flex-row md:items-end md:justify-between">
             <div>
               <p className="font-mono text-[10px] tracking-[0.35em] text-white/40">EMAIL</p>

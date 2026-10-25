@@ -1,4 +1,4 @@
-import { useRef, useState, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { useNavigate } from 'react-router'
 import { Eraser, MapPin, Send } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -195,6 +195,34 @@ const FOOTSTEPS = [
 
 export default function ScrapbookView() {
   const navigate = useNavigate()
+  const stepsRef = useRef<HTMLDivElement>(null)
+
+  // 足迹时间线:滚动到哪个节点,哪个节点点亮(且保持点亮)
+  useEffect(() => {
+    const root = stepsRef.current
+    if (!root) return
+    const steps = [...root.querySelectorAll('.nexus-step')]
+    const io = new IntersectionObserver(
+      (entries) => {
+        for (const e of entries) {
+          if (e.isIntersecting) {
+            e.target.classList.add('is-lit')
+            io.unobserve(e.target)
+          }
+        }
+      },
+      { threshold: 0.6 },
+    )
+    steps.forEach((st) => io.observe(st))
+    // 兜底:个别环境 IntersectionObserver 不回调时,延时整体点亮,避免时间线永远灰着
+    const fallback = window.setTimeout(() => {
+      steps.forEach((st) => st.classList.add('is-lit'))
+    }, 1500)
+    return () => {
+      clearTimeout(fallback)
+      io.disconnect()
+    }
+  }, [])
 
   return (
     <div
@@ -280,17 +308,27 @@ export default function ScrapbookView() {
               <p className="mb-4 flex items-center gap-2 font-mono text-[11px] tracking-[0.25em] text-white/45">
                 <MapPin size={12} className="text-yellow-200/70" /> 足迹时间线
               </p>
-              <div className="space-y-5">
+              <div ref={stepsRef} className="nexus-steps relative space-y-6 pl-1">
                 {FOOTSTEPS.map((f) => (
-                  <div key={f.year} className="flex gap-3.5">
-                    <span className="mt-0.5 text-xl">{f.sticker}</span>
-                    <div className="min-w-0 border-l border-white/12 pl-3.5">
-                      <p className="font-mono text-[11px] text-yellow-200/70">{f.year}</p>
-                      <p className="mt-1 text-[13px] leading-relaxed text-white/75">{f.text}</p>
+                  <div key={f.year} className="nexus-step relative flex gap-3.5 pb-1">
+                    {/* 竖线 + 节点:进入视口点亮 */}
+                    <span className="nexus-step-dot relative z-10 mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-white/25 bg-[#1a1916] text-[11px] transition-all duration-500">{f.sticker}</span>
+                    <div className="min-w-0 pt-0.5">
+                      <p className="nexus-step-year font-mono text-[11px] text-white/40 transition-colors duration-500">{f.year}</p>
+                      <p className="nexus-step-text mt-1 text-[13px] leading-relaxed text-white/60 transition-colors duration-500">{f.text}</p>
                     </div>
+                    <span className="nexus-step-line absolute top-7 left-[13px] h-[calc(100%+0.5rem)] w-px bg-white/10 transition-colors duration-500" />
                   </div>
                 ))}
               </div>
+              <style>{`
+                .nexus-step { opacity: .45; transition: opacity .5s ease }
+                .nexus-step.is-lit { opacity: 1 }
+                .nexus-step.is-lit .nexus-step-dot { border-color: rgba(250,240,130,.8); box-shadow: 0 0 14px rgba(250,240,130,.35) }
+                .nexus-step.is-lit .nexus-step-year { color: rgba(250,240,130,.85) }
+                .nexus-step.is-lit .nexus-step-text { color: rgba(255,255,255,.85) }
+                .nexus-step.is-lit .nexus-step-line { background: rgba(250,240,130,.4) }
+              `}</style>
               <Tape className="-bottom-2.5 left-8 w-20" color="rgba(240,166,216,0.6)" />
             </OSWindow>
           </Reveal>
