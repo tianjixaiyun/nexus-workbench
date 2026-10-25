@@ -206,7 +206,16 @@ export function ExpenseView() {
       {!loaded ? (
         <div className="flex justify-center py-10 text-txt-muted"><Loader2 className="animate-spin" size={20} /></div>
       ) : expenses.length === 0 ? (
-        <EmptyState icon={Wallet} title="还没有记账" hint="从今天的第一笔开始——奶茶、地铁票都算数" />
+        <EmptyState
+          icon={Wallet}
+          title="还没有记账"
+          hint="从今天的第一笔开始——奶茶、地铁票都算数"
+          steps={[
+            { title: '选类型', desc: '支出还是收入,点一下切换' },
+            { title: '点分类', desc: '🍜餐饮 🚇交通 🛍️购物…芯片一点就选好' },
+            { title: '看趋势', desc: '环形图+近三月柱状,钱去哪了一眼看清' },
+          ]}
+        />
       ) : (
         <Card>
           <p className="mb-3 text-sm font-semibold text-txt-secondary">最近记录</p>

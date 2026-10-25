@@ -504,9 +504,10 @@ function DepthAtmosphere({ scrollRef, night }: { scrollRef: RefObject<number>; n
 // ---------- 滚动运镜 ----------
 const KEYFRAMES: { t: number; pos: [number, number, number]; tgt: [number, number, number] }[] = [
   { t: 0.0, pos: [0, 12.5, 30], tgt: [2, 1.5, -60] }, // 海面上:阳光、波浪、小船
-  { t: 0.2, pos: [1.5, 2.2, 22], tgt: [0, -3.5, -14] }, // 掠过浪尖,即将入水
-  { t: 0.44, pos: [-5, -8.5, 15], tgt: [0, -11, -8] }, // 透光层:鱼群与光柱
-  { t: 0.66, pos: [5.5, -17, 12], tgt: [0, -20, -7] }, // 越潜越深,蓝色渐浓
+  { t: 0.16, pos: [1, 4.5, 23], tgt: [0, -1.5, -13] }, // 三步玩转:贴着水面缓降
+  { t: 0.33, pos: [1.5, 1.2, 21], tgt: [0, -3.5, -14] }, // 掠过浪尖,即将入水
+  { t: 0.5, pos: [-5, -8.5, 15], tgt: [0, -11, -8] }, // 透光层:鱼群与光柱
+  { t: 0.68, pos: [5.5, -17, 12], tgt: [0, -20, -7] }, // 越潜越深,蓝色渐浓
   { t: 0.85, pos: [0, -27.5, 13], tgt: [0, -27.5, -6] }, // 鲸正从此处路过
   { t: 1.0, pos: [0, -36.5, 16], tgt: [0, -43.5, 0] }, // 深海尽头:珊瑚与核心
 ]
@@ -736,6 +737,37 @@ export default function OceanLanding() {
               <CapsuleButton primary onClick={() => scrollTo(containerRef.current?.clientHeight ?? 800)}>潜入 ↓</CapsuleButton>
               <CapsuleButton onClick={(e) => liquidNavigate(navigate, '/home', e)}>直接进入工作台</CapsuleButton>
             </div>
+          </div>
+        </section>
+
+        {/* 第 1.5 幕:三步玩转 */}
+        <section className="flex h-dvh flex-col items-center justify-center gap-10 px-8 text-center md:px-16">
+          <div className="pointer-events-none max-w-3xl">
+            <p className="mb-4 text-[11px] tracking-[0.4em] text-cyan-100/80">-2M · 起步</p>
+            <h2 className="text-4xl leading-tight font-bold tracking-wide text-white drop-shadow md:text-6xl">
+              三步,玩转这片海。
+            </h2>
+          </div>
+          <div className="pointer-events-none grid w-full max-w-4xl gap-4 md:grid-cols-3">
+            {[
+              { n: '01', t: '下潜 · 探索', d: '继续往下滚,光线渐暗,途经鱼群与鲸,直达 -40m 发光珊瑚海底。', e: '🌊' },
+              { n: '02', t: '上岸 · 工作台', d: '点「进入工作台」:任务、目标、习惯、番茄、笔记、记账一应俱全。', e: '🧭' },
+              { n: '03', t: '记录 · 收藏', d: '碎碎念随手记,成就徽章慢慢攒——这里会长成你的数字年轮。', e: '✨' },
+            ].map((c, i) => (
+              <div
+                key={c.n}
+                className="nexus-howto-card rounded-3xl border border-white/20 bg-white/10 p-6 text-left backdrop-blur-md"
+                style={{ animationDelay: `${200 + i * 160}ms`, transform: `rotate(${(i - 1) * 1.2}deg)` }}
+              >
+                <style>{`
+                  .nexus-howto-card { opacity: 0; animation: nexus-howto-in 640ms cubic-bezier(.2,.7,.3,1) forwards }
+                  @keyframes nexus-howto-in { from { opacity: 0; transform: translateY(28px) rotate(0deg) } }
+                `}</style>
+                <p className="font-mono text-3xl font-bold text-cyan-200/45" style={{ fontFamily: 'Georgia, serif' }}>{c.n}</p>
+                <p className="mt-3 text-base font-bold text-white">{c.e} {c.t}</p>
+                <p className="mt-2 text-xs leading-relaxed text-white/70">{c.d}</p>
+              </div>
+            ))}
           </div>
         </section>
 

@@ -137,6 +137,11 @@ export function MemosView() {
             icon={MessageCircle}
             title={filterTag ? `没有 #${filterTag} 的碎碎念` : '还没有碎碎念'}
             hint={filterTag ? '换个标签,或者去记一条新的' : '想法转瞬即逝——想到什么,随手记下来,时间会替你串成线'}
+            steps={filterTag ? undefined : [
+              { title: '随手记', desc: '顶部输入框,一句话就行,#标签 会自动归档' },
+              { title: '串起来', desc: '同一个标签,把跨天的想法自动串成一条线' },
+              { title: '回头看', desc: '时间线就是你思绪的年轮,越积越有意思' },
+            ]}
           />
         ) : (
           <div className="space-y-6">
