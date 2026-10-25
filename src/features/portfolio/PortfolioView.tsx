@@ -473,6 +473,15 @@ export default function PortfolioView() {
               <span key={t} className="rounded-full border border-black/12 bg-white/70 px-3.5 py-1.5">{t}</span>
             ))}
           </div>
+          {/* 工具墙:悬停谁谁亮,其余变暗 */}
+          <p className="mt-8 font-mono text-[10px] tracking-[0.35em] text-black/40">BUILT WITH</p>
+          <div className="mt-3 flex flex-wrap gap-x-5 gap-y-2 group/tool">
+            {['React', 'TypeScript', 'Three.js', 'Tailwind', 'Vite', 'ECharts', 'Dexie', 'Supabase'].map((t) => (
+              <span key={t} className="text-sm font-semibold text-black/75 opacity-100 transition-all duration-300 hover:!opacity-100 group-hover/tool:opacity-30" style={{ fontFamily: SERIF }}>
+                {t}
+              </span>
+            ))}
+          </div>
         </div>
         </TiltCard>
       </section>

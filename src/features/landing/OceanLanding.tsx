@@ -1,4 +1,4 @@
-import { memo, useMemo, useRef, useState, type ReactNode, type RefObject } from 'react'
+import { useEffect, memo, useMemo, useRef, useState, type ReactNode, type RefObject } from 'react'
 import * as THREE from 'three'
 import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import { Sparkles } from '@react-three/drei'
@@ -8,6 +8,11 @@ import { ScrambleText, Magnetic } from '@/components/fx/micro'
 import { BlurText, Marquee } from '@/components/fx/bits'
 import { ParticleField } from '@/components/fx/ParticleField'
 import { RotatingBadge } from '@/components/fx/RotatingBadge'
+import { CountUp } from '@/components/fx/micro'
+import { useTaskStore } from '@/stores/taskStore'
+import { useMemoStore } from '@/stores/memoStore'
+import { useHabitStore } from '@/stores/habitStore'
+import { recentSessions } from '@/lib/pomodoro'
 import { liquidNavigate } from '@/components/fx/overlays'
 import { burst } from '@/components/fx/Burst'
 import { whaleCall } from '@/lib/whaleCall'
@@ -505,11 +510,12 @@ function DepthAtmosphere({ scrollRef, night }: { scrollRef: RefObject<number>; n
 // ---------- 滚动运镜 ----------
 const KEYFRAMES: { t: number; pos: [number, number, number]; tgt: [number, number, number] }[] = [
   { t: 0.0, pos: [0, 12.5, 30], tgt: [2, 1.5, -60] }, // 海面上:阳光、波浪、小船
-  { t: 0.16, pos: [1, 4.5, 23], tgt: [0, -1.5, -13] }, // 三步玩转:贴着水面缓降
-  { t: 0.33, pos: [1.5, 1.2, 21], tgt: [0, -3.5, -14] }, // 掠过浪尖,即将入水
-  { t: 0.5, pos: [-5, -8.5, 15], tgt: [0, -11, -8] }, // 透光层:鱼群与光柱
-  { t: 0.68, pos: [5.5, -17, 12], tgt: [0, -20, -7] }, // 越潜越深,蓝色渐浓
-  { t: 0.85, pos: [0, -27.5, 13], tgt: [0, -27.5, -6] }, // 鲸正从此处路过
+  { t: 0.14, pos: [1, 4.5, 23], tgt: [0, -1.5, -13] }, // 三步玩转:贴着水面缓降
+  { t: 0.28, pos: [1.5, 1.2, 21], tgt: [0, -3.5, -14] }, // 掠过浪尖,即将入水
+  { t: 0.42, pos: [-5, -8.5, 15], tgt: [0, -11, -8] }, // 透光层:鱼群与光柱
+  { t: 0.56, pos: [5.5, -17, 12], tgt: [0, -20, -7] }, // 越潜越深,蓝色渐浓
+  { t: 0.72, pos: [0, -27.5, 13], tgt: [0, -27.5, -6] }, // 鲸正从此处路过
+  { t: 0.87, pos: [0, -33, 14.5], tgt: [0, -35, -4] }, // 数字年报:临近海底的静默
   { t: 1.0, pos: [0, -36.5, 16], tgt: [0, -43.5, 0] }, // 深海尽头:珊瑚与核心
 ]
 
@@ -610,6 +616,23 @@ function CapsuleButton({ children, onClick, primary }: { children: ReactNode; on
 
 export default function OceanLanding() {
   const navigate = useNavigate()
+  // 数字年报:真实数据讲这片海的故事
+  const tasks = useTaskStore((st) => st.tasks)
+  const memos = useMemoStore((st) => st.memos)
+  const habits = useHabitStore((st) => st.habits)
+  const doneTasks = tasks.filter((t) => t.status === 'done' && !t.deletedAt).length
+  const focusTotal = recentSessions(90).reduce((sum, x) => sum + x.count, 0)
+  const maxStreak = habits.reduce((m, h) => {
+    const set = new Set(h.dates ?? [])
+    let streak = 0
+    const day = 86_400_000
+    const fmt = (t: number) => { const d = new Date(t); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}` }
+    const today = new Date(); today.setHours(0, 0, 0, 0)
+    let t0 = today.getTime()
+    if (!set.has(fmt(t0))) { t0 -= day; if (!set.has(fmt(t0))) return m }
+    while (set.has(fmt(t0))) { streak++; t0 -= day }
+    return Math.max(m, streak)
+  }, 0)
   // 深夜 23:00-5:00:月光海洋
   const night = useMemo(() => {
     const h = new Date().getHours()
@@ -617,6 +640,16 @@ export default function OceanLanding() {
   }, [])
   const [progress, setProgress] = useState(0)
   const scrollRef = useRef(0)
+
+  // 独立页面:自己拉取数据(store 数据在本地,瞬读)
+  useEffect(() => {
+    const t = useTaskStore.getState()
+    if (!t.loaded) void t.fetch()
+    const m = useMemoStore.getState()
+    if (!m.loaded) void m.fetch()
+    const h = useHabitStore.getState()
+    if (!h.loaded) void h.fetch()
+  }, [])
   const containerRef = useRef<HTMLDivElement>(null)
 
   const handleScroll = () => {
@@ -828,6 +861,37 @@ export default function OceanLanding() {
             <div className="mt-8 flex flex-wrap gap-4">
               <CapsuleButton onClick={(e) => liquidNavigate(navigate, '/sanctuary', e)}>去云鲸圣域看看 →</CapsuleButton>
             </div>
+          </div>
+        </section>
+
+        {/* 第 4.5 幕:数字年报 */}
+        <section className="flex h-dvh flex-col items-center justify-center gap-12 px-8 text-center">
+          <div className="pointer-events-none max-w-2xl">
+            <p className="mb-4 text-[11px] tracking-[0.4em] text-cyan-100/80">-36M · 年轮</p>
+            <h2 className="text-4xl leading-tight font-bold tracking-wide text-white drop-shadow md:text-6xl">
+              这片海,已经陪你走了多远。
+            </h2>
+          </div>
+          <div className="pointer-events-none grid w-full max-w-4xl grid-cols-2 gap-8 md:grid-cols-4 md:gap-10">
+            {[
+              { n: doneTasks, label: 'DONE · 完成的任务', suffix: '件' },
+              { n: focusTotal, label: 'FOCUS · 专注番茄', suffix: '个' },
+              { n: maxStreak, label: 'STREAK · 最长连续打卡', suffix: '天' },
+              { n: memos.length, label: 'MEMOS · 碎碎念', suffix: '条' },
+            ].map((item, i) => (
+              <div key={item.label} style={{ animationDelay: `${180 + i * 150}ms` }} className="nexus-stat-block">
+                <style>{`
+                  .nexus-stat-block { opacity: 0; transform: translateY(22px); animation: nexus-empty-in 620ms cubic-bezier(.2,.7,.3,1) forwards }
+                  @keyframes nexus-empty-in { to { opacity: 1; transform: none } }
+                `}</style>
+                <p className="font-mono text-5xl font-bold text-white tabular-nums drop-shadow md:text-7xl" style={{ fontFamily: 'Georgia, serif' }}>
+                  <CountUp value={item.n} duration={1400} />
+                </p>
+                <p className="mt-2.5 text-[10px] tracking-[0.28em] text-white/55">
+                  {item.label} <span className="text-white/35">{item.suffix}</span>
+                </p>
+              </div>
+            ))}
           </div>
         </section>
 
