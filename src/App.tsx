@@ -3,6 +3,7 @@ import { AppLayout } from '@/layouts/AppLayout'
 import LandingPage from '@/pages/LandingPage'
 import PortfolioPage from '@/pages/PortfolioPage'
 import AchievementsPage from '@/pages/AchievementsPage'
+import ScrapbookPage from '@/pages/ScrapbookPage'
 import { CustomCursor } from '@/components/fx/CustomCursor'
 import DashboardPage from '@/pages/DashboardPage'
 import TasksPage from '@/pages/TasksPage'
@@ -34,6 +35,8 @@ export default function App() {
         <Route path="/" element={<LandingPage />} />
         {/* 作品集:个人网站对外展示页,同样独立全屏 */}
         <Route path="/portfolio" element={<PortfolioPage />} />
+        {/* 海面之上·手帐:剪贴簿风彩蛋页 */}
+        <Route path="/scrapbook" element={<ScrapbookPage />} />
         <Route element={<AppLayout />}>
           <Route path="home" element={<DashboardPage />} />
           <Route path="tasks" element={<TasksPage />} />

@@ -782,7 +782,8 @@ export default function OceanLanding() {
             </p>
             <div className="mt-10 flex flex-wrap justify-center gap-4">
               <CapsuleButton primary onClick={(e) => liquidNavigate(navigate, '/home', e)}>进入工作台 →</CapsuleButton>
-              <CapsuleButton onClick={() => navigate('/portfolio')}>看看作品集</CapsuleButton>
+              <CapsuleButton onClick={(e) => liquidNavigate(navigate, '/portfolio', e)}>看看作品集</CapsuleButton>
+              <CapsuleButton onClick={(e) => liquidNavigate(navigate, '/scrapbook', e)}>浮上海面翻手帐 ☀️</CapsuleButton>
               <CapsuleButton onClick={() => scrollTo(0)}>回到水面 ↑</CapsuleButton>
             </div>
             <p className="mt-14 text-[10px] tracking-[0.3em] text-white/50">NEXUS · PERSONAL DIGITAL OCEAN · 2026</p>
