@@ -8,6 +8,7 @@
 |---|---|
 | 工作台主页 | 问候 + 每日一句 + 时钟、统计卡片、7 天完成趋势、今日到期、目标进展、习惯打卡速览、天气(Glance 风格)、倒数日、快捷入口、最近便签、迷你月历(Glance 风格) |
 | 目标 | **顶层闭环**:给目标关联一个 `#标签`,打了该标签的任务完成率自动变成目标进度环;也支持手动进度条 + 截止日倒计时(Ali Abdaal 的 quarterly quests) |
+| 云鲸圣域 | **按 0 或导航末尾进入**:实时渲染的 3D 梦境场景——悬浮玻璃立方体中封存一座微缩生态,半透明「云鲸星灵」沿 8 字巡游(发光心核+星尘),雪山/森林/发光河流/瀑布/湖泊/浮空岛随云鲸呼吸轻微律动,星尘粒子与体积雾;可拖拽旋转/滚轮缩放,可暂停呼吸与旋转(Three.js + React Three Fiber) |
 | 新手引导 | 首次打开弹出欢迎引导,一键载入示例数据立刻体验全部功能;也可从空白开始 |
 | 任务中心 | **列表 / 看板 / 日历** 三视图:列表(搜索/筛选/优先级/截止日期)、看板(拖拽)、**日历(月历任务片、拖拽改期、未排期侧栏、点空白天新建)**;子任务清单、标签、**重复任务(完成后自动生成下一次)**、删除进回收站 |
 | 习惯打卡 | 连续天数连击、14 天打卡条、彩色标识(Habitica 风格) |
@@ -84,7 +85,7 @@ npm run preview   # 或部署到任意静态托管
 
 ## 技术栈
 
-React 19 · TypeScript · Vite · Tailwind CSS v4 · Zustand · Dexie(IndexedDB)· Supabase · ECharts · @dnd-kit
+React 19 · TypeScript · Vite · Tailwind CSS v4 · Zustand · Dexie(IndexedDB)· Supabase · ECharts · @dnd-kit · Three.js(@react-three/fiber/drei)
 
 ## 项目结构(后续加功能照这个套路)
 

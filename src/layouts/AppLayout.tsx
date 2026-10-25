@@ -8,6 +8,7 @@ import {
   ListChecks,
   Loader2,
   LogOut,
+  Waves,
   Moon,
   PanelLeftClose,
   PanelLeftOpen,
@@ -49,6 +50,7 @@ const NAV_ITEMS = [
   { to: '/stats', label: '数据看板', icon: BarChart3 },
   { to: '/links', label: '工具箱', icon: Wrench },
   { to: '/trash', label: '回收站', icon: Trash2 },
+  { to: '/sanctuary', label: '云鲸圣域', icon: Waves },
 ] as const
 
 const PAGE_TITLES: Record<string, string> = {
@@ -61,6 +63,7 @@ const PAGE_TITLES: Record<string, string> = {
   '/stats': '数据看板',
   '/links': '工具箱',
   '/trash': '回收站',
+  '/sanctuary': '云鲸圣域',
 }
 
 /** 顶栏时钟:自包含的秒级重渲染,避免牵连整个应用树每秒刷新 */
@@ -155,6 +158,9 @@ export function AppLayout() {
           e.preventDefault()
           navigate(item.to)
         }
+      } else if (e.key === '0') {
+        e.preventDefault()
+        navigate('/sanctuary')
       }
     }
     document.addEventListener('keydown', onKey)

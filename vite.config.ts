@@ -50,6 +50,7 @@ export default defineConfig({
       output: {
         advancedChunks: {
           groups: [
+            { name: 'three', test: /node_modules[\\/]three|node_modules[\\/]@react-three/ },
             { name: 'echarts', test: /node_modules[\\/]echarts/ },
             { name: 'supabase', test: /node_modules[\\/]@supabase/ },
           ],

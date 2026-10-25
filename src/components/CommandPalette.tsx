@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router'
 import {
   BarChart3,
   Bot,
+  Waves,
   CornerDownLeft,
   FileDown,
   FileUp,
@@ -64,6 +65,7 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
       { key: 'p-stats', group: '页面', label: '数据看板', keywords: 'stats chart 统计 数据 图表', icon: <BarChart3 size={15} />, run: () => { navigate('/stats'); onClose() } },
       { key: 'p-links', group: '页面', label: '工具箱', keywords: 'link bookmark 工具 链接 网址', icon: <Wrench size={15} />, run: () => { navigate('/links'); onClose() } },
       { key: 'p-trash', group: '页面', label: '回收站', keywords: 'trash recycle 回收站 删除', icon: <Trash2 size={15} />, run: () => { navigate('/trash'); onClose() } },
+      { key: 'p-sanctuary', group: '页面', label: '云鲸圣域', keywords: 'sanctuary whale 3d 云鲸 圣域 梦境 场景', icon: <Waves size={15} />, run: () => { navigate('/sanctuary'); onClose() } },
     ]
     const actions: PaletteItem[] = [
       { key: 'a-task', group: '操作', label: '新建任务', keywords: 'new add create 新建 添加 任务', icon: <Plus size={15} />, run: () => { requestAction('new-task'); navigate('/tasks'); onClose() } },

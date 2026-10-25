@@ -3,6 +3,7 @@ import { AppLayout } from '@/layouts/AppLayout'
 import DashboardPage from '@/pages/DashboardPage'
 import TasksPage from '@/pages/TasksPage'
 import GoalsPage from '@/pages/GoalsPage'
+import SanctuaryPage from '@/pages/SanctuaryPage'
 import HabitsPage from '@/pages/HabitsPage'
 import FocusPage from '@/pages/FocusPage'
 import NotesPage from '@/pages/NotesPage'
@@ -25,6 +26,7 @@ export default function App() {
           <Route path="notes" element={<NotesPage />} />
           <Route path="stats" element={<StatsPage />} />
           <Route path="links" element={<LinksPage />} />
+          <Route path="sanctuary" element={<SanctuaryPage />} />
           <Route path="trash" element={<TrashPage />} />
         </Route>
         <Route path="*" element={<Navigate to="/" replace />} />

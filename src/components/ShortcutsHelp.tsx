@@ -7,6 +7,7 @@ const GROUPS: { title: string; items: { keys: string; desc: string }[] }[] = [
       { keys: 'Ctrl K', desc: '打开命令面板(搜索一切)' },
       { keys: '/', desc: '打开命令面板' },
       { keys: '1 - 9', desc: '切换到第 1~9 个页面' },
+      { keys: '0', desc: '云鲸圣域(3D 梦境)' },
       { keys: '?', desc: '显示本帮助' },
       { keys: 'Esc', desc: '关闭弹窗 / 面板' },
     ],
