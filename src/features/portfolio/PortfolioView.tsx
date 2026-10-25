@@ -5,7 +5,7 @@ import { cn } from '@/lib/utils'
 import { useWorkStore } from '@/stores/workStore'
 import { seedWorks } from '@/lib/sample'
 import type { WorkItem } from '@/lib/data/types'
-import { ScrambleText, Magnetic, TiltCard } from '@/components/fx/micro'
+import { ScrambleText, Magnetic, TiltCard, Reveal } from '@/components/fx/micro'
 
 /**
  * 作品集 · 编辑杂志风(浅色纸面,与主站的深色数字海洋形成"翻开画册"的反差)
@@ -240,6 +240,18 @@ export default function PortfolioView() {
   const [email, setEmail] = useState(() => localStorage.getItem(LS_EMAIL) ?? 'hello@nexus.work')
   const [editMeta, setEditMeta] = useState(false)
   const listRef = useRef<HTMLDivElement>(null)
+  const watermarkRef = useRef<HTMLDivElement>(null)
+
+  // 页面级视差:巨型水印字以更低速度漂移
+  useEffect(() => {
+    const onScroll = () => {
+      if (watermarkRef.current) {
+        watermarkRef.current.style.transform = 'translateY(' + (-scrollY * 0.22) + 'px)'
+      }
+    }
+    window.addEventListener('scroll', onScroll, { passive: true })
+    return () => window.removeEventListener('scroll', onScroll)
+  }, [])
 
   useEffect(() => {
     if (!loaded) void fetch()
@@ -267,6 +279,17 @@ export default function PortfolioView() {
       style={{ fontFamily: 'system-ui, "PingFang SC", "Microsoft YaHei", sans-serif' }}
       onMouseMove={(e) => hoverPreview && setHoverPreview((p) => (p ? { ...p, x: e.clientX, y: e.clientY } : p))}
     >
+      {/* 视差水印:漂在纸面背后的巨型字 */}
+      <div
+        ref={watermarkRef}
+        className="pointer-events-none fixed top-[16%] left-1/2 z-0 -translate-x-1/2 select-none will-change-transform"
+        aria-hidden
+      >
+        <span className="block text-[22vw] leading-none font-bold tracking-tight text-black/[0.035]" style={{ fontFamily: SERIF }}>
+          PORTFOLIO
+        </span>
+      </div>
+
       {/* 顶栏 */}
       <header className="sticky top-0 z-30 border-b border-black/8 bg-[#f6f4ef]/85 backdrop-blur-lg">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4 md:px-10">
@@ -326,8 +349,9 @@ export default function PortfolioView() {
         )}
         <div className="border-t border-black/12">
           {works.map((w, i) => (
+            <Reveal key={w.id} delay={i * 70}>
             <div
-              key={w.id}
+              data-cursor="VIEW"
               className="group relative flex cursor-pointer items-center gap-4 border-b border-black/12 py-7 transition-colors hover:bg-black/[0.03] md:gap-8 md:py-9"
               onMouseEnter={() => w.images[0] && !editMode && setHoverPreview({ src: w.images[0], x: -999, y: -999 })}
               onMouseMove={(e) => w.images[0] && !editMode && setHoverPreview({ src: w.images[0], x: e.clientX, y: e.clientY })}
@@ -360,6 +384,7 @@ export default function PortfolioView() {
                 </button>
               )}
             </div>
+            </Reveal>
           ))}
         </div>
         {editMode && (

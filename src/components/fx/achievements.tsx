@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { create } from 'zustand'
+import { useNavigate } from 'react-router'
 import { recentSessions } from '@/lib/pomodoro'
 import { useTaskStore } from '@/stores/taskStore'
 import { useHabitStore } from '@/stores/habitStore'
@@ -31,7 +32,7 @@ interface Metrics {
   night: boolean
 }
 
-function loadUnlocked(): Record<string, string> {
+export function loadUnlocked(): Record<string, string> {
   try {
     return JSON.parse(localStorage.getItem(LS_KEY) ?? '{}') as Record<string, string>
   } catch {
@@ -79,7 +80,7 @@ export function collectMetrics(): Metrics {
   return { doneTasks, focusTotal, maxStreak, goalDone, works: works.length, night: hour >= 23 || hour < 5 }
 }
 
-const DEFS: (Achievement & { test: (m: Metrics) => boolean })[] = [
+export const ACHIEVEMENT_DEFS: (Achievement & { test: (m: Metrics) => boolean })[] = [
   { id: 'first-task', icon: '🌊', name: '初次下潜', desc: '完成第一件任务', test: (m) => m.doneTasks >= 1 },
   { id: 'tasks-10', icon: '🐟', name: '小有节奏', desc: '累计完成 10 件任务', test: (m) => m.doneTasks >= 10 },
   { id: 'tasks-100', icon: '🐋', name: '百件深潜', desc: '累计完成 100 件任务', test: (m) => m.doneTasks >= 100 },
@@ -114,7 +115,7 @@ export function checkAchievementsNow() {
     try {
       const unlocked = loadUnlocked()
       const m = collectMetrics()
-      for (const def of DEFS) {
+      for (const def of ACHIEVEMENT_DEFS) {
         if (!unlocked[def.id] && def.test(m)) {
           unlocked[def.id] = new Date().toISOString()
           useToast.getState().push(def)
@@ -137,6 +138,7 @@ export function AchievementWatcher() {
     document.head.appendChild(style)
     return () => style.remove()
   }, [])
+  const navigate = useNavigate()
   const queue = useToast((s) => s.queue)
   const shift = useToast((s) => s.shift)
   const [shown, setShown] = useState<Achievement[]>([])
@@ -170,9 +172,10 @@ export function AchievementWatcher() {
   return (
     <div className="pointer-events-none fixed right-5 bottom-5 z-[9994] flex flex-col gap-2.5">
       {shown.map((a, i) => (
-        <div
+        <button
           key={a.id + i}
-          className="glass-card flex items-center gap-3.5 rounded-2xl border border-cyan-300/20 bg-[#0a1e33]/85 px-4 py-3 shadow-[0_12px_40px_rgba(6,50,80,0.5)] backdrop-blur-xl"
+          onClick={() => { shift(); navigate('/achievements') }}
+          className="glass-card pointer-events-auto flex cursor-pointer items-center gap-3.5 rounded-2xl border border-cyan-300/20 bg-[#0a1e33]/85 px-4 py-3 text-left shadow-[0_12px_40px_rgba(6,50,80,0.5)] backdrop-blur-xl transition-transform hover:scale-[1.03]"
           style={{ transform: `translateY(${(shown.length - 1 - i) * 4}px)`, animation: 'nexus-toast-in 380ms cubic-bezier(0.2,0.9,0.3,1.2)' }}
         >
           <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-sky-400/25 to-cyan-300/25 text-xl">
@@ -183,7 +186,7 @@ export function AchievementWatcher() {
             <p className="text-sm font-bold text-white">{a.name}</p>
             <p className="text-[11px] text-white/60">{a.desc}</p>
           </div>
-        </div>
+        </button>
       ))}
     </div>
   )

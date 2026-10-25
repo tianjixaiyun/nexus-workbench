@@ -144,3 +144,39 @@ export function CountUp({ value, duration = 1100, className }: { value: number; 
 
   return <span className={className}>{display}</span>
 }
+
+// ---------- 滚动浮现(进入视口时上浮淡入,配 delay 做列表级联) ----------
+export function Reveal({ children, delay = 0, className }: { children: ReactNode; delay?: number; className?: string }) {
+  const ref = useRef<HTMLDivElement>(null)
+  const [shown, setShown] = useState(false)
+
+  useEffect(() => {
+    const el = ref.current
+    if (!el) return
+    const io = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setShown(true)
+          io.disconnect()
+        }
+      },
+      { threshold: 0.1 },
+    )
+    io.observe(el)
+    return () => io.disconnect()
+  }, [])
+
+  return (
+    <div
+      ref={ref}
+      className={cn('transition-all duration-700 ease-out', className)}
+      style={{
+        opacity: shown ? 1 : 0,
+        transform: shown ? 'none' : 'translateY(26px)',
+        transitionDelay: `${delay}ms`,
+      }}
+    >
+      {children}
+    </div>
+  )
+}

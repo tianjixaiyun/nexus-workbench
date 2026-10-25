@@ -2,6 +2,8 @@ import { BrowserRouter, Navigate, Route, Routes } from 'react-router'
 import { AppLayout } from '@/layouts/AppLayout'
 import LandingPage from '@/pages/LandingPage'
 import PortfolioPage from '@/pages/PortfolioPage'
+import AchievementsPage from '@/pages/AchievementsPage'
+import { CustomCursor } from '@/components/fx/CustomCursor'
 import DashboardPage from '@/pages/DashboardPage'
 import TasksPage from '@/pages/TasksPage'
 import GoalsPage from '@/pages/GoalsPage'
@@ -24,6 +26,7 @@ export default function App() {
       <LiquidCurtain />
       <BurstHost />
       <DiveIntro />
+      <CustomCursor />
       <AchievementWatcher />
       <Routes>
         <Route path="/login" element={<LoginPage />} />
@@ -42,6 +45,7 @@ export default function App() {
           <Route path="links" element={<LinksPage />} />
           <Route path="sanctuary" element={<SanctuaryPage />} />
           <Route path="trash" element={<TrashPage />} />
+          <Route path="achievements" element={<AchievementsPage />} />
         </Route>
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

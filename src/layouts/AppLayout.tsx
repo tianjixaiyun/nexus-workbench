@@ -9,6 +9,7 @@ import {
   Loader2,
   LogOut,
   Waves,
+  Award,
   Moon,
   PanelLeftClose,
   PanelLeftOpen,
@@ -53,6 +54,7 @@ const NAV_ITEMS = [
   { to: '/stats', label: '数据看板', icon: BarChart3 },
   { to: '/links', label: '工具箱', icon: Wrench },
   { to: '/trash', label: '回收站', icon: Trash2 },
+  { to: '/achievements', label: '成就', icon: Award },
   { to: '/sanctuary', label: '云鲸圣域', icon: Waves },
 ] as const
 
@@ -66,6 +68,7 @@ const PAGE_TITLES: Record<string, string> = {
   '/stats': '数据看板',
   '/links': '工具箱',
   '/trash': '回收站',
+  '/achievements': '成就',
   '/sanctuary': '云鲸圣域',
 }
 
