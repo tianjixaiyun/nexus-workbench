@@ -1,0 +1,209 @@
+import { create } from 'zustand'
+import { dataAdapter } from '@/lib/data'
+import type { NewTask, Task, TaskRecurrence, TaskStatus } from '@/lib/data/types'
+import { nowIso, todayStr } from '@/lib/utils'
+
+/** 回收站保留天数,超过后永久清除 */
+export const TRASH_RETENTION_DAYS = 30
+
+/** 未删除的任务(所有页面展示都用这个) */
+export function activeTasks(tasks: Task[]): Task[] {
+  return tasks.filter((t) => !t.deletedAt)
+}
+
+/** 回收站里的任务 */
+export function trashedTasks(tasks: Task[]): Task[] {
+  return tasks.filter((t) => t.deletedAt)
+}
+
+/** 按重复规则推算下一次截止日期 */
+export function nextDueDate(due: string | null, rule: TaskRecurrence): string {
+  const base = due ?? todayStr()
+  const [y, m, d] = base.split('-').map(Number)
+  const date = new Date(y, (m ?? 1) - 1, d ?? 1)
+  if (rule === 'daily') date.setDate(date.getDate() + 1)
+  if (rule === 'weekly') date.setDate(date.getDate() + 7)
+  if (rule === 'monthly') date.setMonth(date.getMonth() + 1)
+  const mm = String(date.getMonth() + 1).padStart(2, '0')
+  const dd = String(date.getDate()).padStart(2, '0')
+  return `${date.getFullYear()}-${mm}-${dd}`
+}
+
+interface TaskState {
+  tasks: Task[]
+  loaded: boolean
+  fetch: () => Promise<void>
+  add: (input: NewTask) => Promise<void>
+  update: (id: string, patch: Partial<Task>) => Promise<void>
+  /** 移入回收站 */
+  softDelete: (id: string) => Promise<void>
+  /** 从回收站恢复 */
+  restore: (id: string) => Promise<void>
+  /** 彻底删除 */
+  remove: (id: string) => Promise<void>
+  /** 清空回收站 */
+  emptyTrash: () => Promise<void>
+  /** 清理超过保留期的回收站数据 */
+  purgeExpired: () => Promise<void>
+  /** 勾选/取消完成,自动维护 completedAt */
+  toggleDone: (id: string) => Promise<void>
+  /** 切换某个子任务的完成状态 */
+  toggleSubtask: (taskId: string, subtaskId: string) => Promise<void>
+  /** 番茄钟完成时给任务累加专注分钟 */
+  addFocusMinutes: (taskId: string, minutes: number) => Promise<void>
+  /** 看板拖拽:移动到某状态列的指定位置,并重排该列 sortOrder */
+  move: (id: string, status: TaskStatus, targetIndex: number) => Promise<void>
+  reset: () => void
+}
+
+export const useTaskStore = create<TaskState>((set, get) => ({
+  tasks: [],
+  loaded: false,
+
+  async fetch() {
+    try {
+      const tasks = await dataAdapter.tasks.list()
+      set({ tasks, loaded: true })
+    } catch (err) {
+      // 失败也解除加载态,避免界面永远转圈;数据视为空
+      console.error('加载任务失败:', err)
+      set({ tasks: [], loaded: true })
+    }
+  },
+
+  async add(input) {
+    // 直接以"已完成"状态创建时,同样记录完成时间
+    const payload: NewTask =
+      input.status === 'done' && input.completedAt === undefined
+        ? { ...input, completedAt: nowIso() }
+        : input
+    const task = await dataAdapter.tasks.create(payload)
+    set({ tasks: [...get().tasks, task] })
+  },
+
+  async update(id, patch) {
+    // 状态切换时自动维护 completedAt(显式传入的除外)
+    const task = get().tasks.find((t) => t.id === id)
+    const finalPatch = { ...patch }
+    if (task && patch.status && patch.status !== task.status && !('completedAt' in patch)) {
+      finalPatch.completedAt = patch.status === 'done' ? nowIso() : null
+    }
+    const updated = await dataAdapter.tasks.update(id, finalPatch)
+    set({ tasks: get().tasks.map((t) => (t.id === id ? updated : t)) })
+
+    // 重复任务:第一次完成时自动生成下一次(按标题+日期去重,防止反复勾选产生重复)
+    if (
+      task &&
+      task.status !== 'done' &&
+      updated.status === 'done' &&
+      updated.recurrence &&
+      updated.recurrence !== 'none'
+    ) {
+      const nextDate = nextDueDate(updated.dueDate, updated.recurrence)
+      const duplicated = get().tasks.some(
+        (t) =>
+          t.id !== updated.id &&
+          !t.deletedAt &&
+          t.status !== 'done' &&
+          t.title === updated.title &&
+          t.recurrence === updated.recurrence &&
+          t.dueDate === nextDate,
+      )
+      if (!duplicated) {
+        const spawn = await dataAdapter.tasks.create({
+          title: updated.title,
+          description: updated.description,
+          status: 'todo',
+          priority: updated.priority,
+          dueDate: nextDate,
+          recurrence: updated.recurrence,
+          tags: [...updated.tags],
+          subtasks: updated.subtasks.map((s) => ({ ...s, done: false })),
+        })
+        set({ tasks: [...get().tasks, spawn] })
+      }
+    }
+  },
+
+  async remove(id) {
+    await dataAdapter.tasks.remove(id)
+    set({ tasks: get().tasks.filter((t) => t.id !== id) })
+  },
+
+  async softDelete(id) {
+    await get().update(id, { deletedAt: nowIso() })
+  },
+
+  async restore(id) {
+    await get().update(id, { deletedAt: null })
+  },
+
+  async emptyTrash() {
+    const trashed = get().tasks.filter((t) => t.deletedAt)
+    await Promise.all(trashed.map((t) => dataAdapter.tasks.remove(t.id)))
+    set({ tasks: get().tasks.filter((t) => !t.deletedAt) })
+  },
+
+  async purgeExpired() {
+    const cutoff = Date.now() - TRASH_RETENTION_DAYS * 24 * 60 * 60 * 1000
+    const expired = get().tasks.filter((t) => t.deletedAt && new Date(t.deletedAt).getTime() < cutoff)
+    if (expired.length === 0) return
+    await Promise.all(expired.map((t) => dataAdapter.tasks.remove(t.id)))
+    const expiredIds = new Set(expired.map((t) => t.id))
+    set({ tasks: get().tasks.filter((t) => !expiredIds.has(t.id)) })
+  },
+
+  async toggleDone(id) {
+    const task = get().tasks.find((t) => t.id === id)
+    if (!task) return
+    const done = task.status !== 'done'
+    await get().update(id, {
+      status: done ? 'done' : 'todo',
+      completedAt: done ? nowIso() : null,
+    })
+  },
+
+  async toggleSubtask(taskId, subtaskId) {
+    const task = get().tasks.find((t) => t.id === taskId)
+    if (!task) return
+    const subtasks = task.subtasks.map((s) => (s.id === subtaskId ? { ...s, done: !s.done } : s))
+    await get().update(taskId, { subtasks })
+  },
+
+  async addFocusMinutes(taskId, minutes) {
+    const task = get().tasks.find((t) => t.id === taskId)
+    if (!task || minutes <= 0) return
+    await get().update(taskId, { focusMinutes: (task.focusMinutes ?? 0) + minutes })
+  },
+
+  async move(id, status, targetIndex) {
+    const { tasks } = get()
+    const task = tasks.find((t) => t.id === id)
+    if (!task) return
+
+    const column = tasks
+      .filter((t) => t.status === status && t.id !== id)
+      .sort((a, b) => a.sortOrder - b.sortOrder)
+    const next = [...column]
+    next.splice(Math.min(targetIndex, next.length), 0, { ...task, status })
+
+    const moved = next.map((t, i) => ({ ...t, status, sortOrder: (i + 1) * 100 }))
+    const others = tasks.filter((t) => t.status !== status)
+    set({ tasks: [...others, ...moved].sort((a, b) => a.sortOrder - b.sortOrder) })
+
+    // 跨列移动相当于状态切换,同步维护 completedAt(仅被拖拽的那张卡需要判断)
+    await Promise.all(
+      moved.map((t) => {
+        let completedAt = t.completedAt
+        if (t.id === task.id && task.status !== t.status) {
+          completedAt = t.status === 'done' ? nowIso() : null
+        }
+        return dataAdapter.tasks.update(t.id, { sortOrder: t.sortOrder, status: t.status, completedAt })
+      }),
+    )
+  },
+
+  reset() {
+    set({ tasks: [], loaded: false })
+  },
+}))

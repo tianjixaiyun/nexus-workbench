@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="color-scheme" content="dark light" />
+    <meta name="theme-color" content="#05080f" />
+    <link rel="icon" type="image/svg+xml" href="/icon.svg" />
+    <title>NEXUS · 工作台</title>
+    <script>
+      // 首帧前恢复主题与背景色,避免闪白/闪黑
+      (function () {
+        var light = false
+        try {
+          light = (localStorage.getItem('nexus:settings') || '').includes('"light"')
+        } catch (e) {}
+        var bg = light ? '#eef2f7' : '#05080f'
+        if (light) document.documentElement.classList.add('light')
+        document.documentElement.style.background = bg
+        document.documentElement.style.colorScheme = light ? 'light' : 'dark'
+      })()
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
