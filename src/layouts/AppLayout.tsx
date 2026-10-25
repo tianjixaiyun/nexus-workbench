@@ -34,6 +34,7 @@ import { useMilestoneStore } from '@/stores/milestoneStore'
 import { useNoteStore } from '@/stores/noteStore'
 import { useSettingsStore } from '@/stores/settingsStore'
 import { useTaskStore } from '@/stores/taskStore'
+import { useWorkStore } from '@/stores/workStore'
 import { AssistantPanel } from '@/components/AssistantPanel'
 import { OnboardingModal } from '@/components/OnboardingModal'
 import { CommandPalette } from '@/components/CommandPalette'
@@ -108,6 +109,7 @@ export function AppLayout() {
       useMilestoneStore.getState(),
       useDailyStore.getState(),
       useGoalStore.getState(),
+      useWorkStore.getState(),
     ] as const
     for (const s of stores) {
       if (!s.loaded) void s.fetch()
@@ -199,6 +201,7 @@ export function AppLayout() {
     useMilestoneStore.getState().reset()
     useDailyStore.getState().reset()
     useGoalStore.getState().reset()
+    useWorkStore.getState().reset()
     navigate('/login', { replace: true })
   }
 

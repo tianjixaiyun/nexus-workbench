@@ -1,6 +1,7 @@
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router'
 import { AppLayout } from '@/layouts/AppLayout'
 import LandingPage from '@/pages/LandingPage'
+import PortfolioPage from '@/pages/PortfolioPage'
 import DashboardPage from '@/pages/DashboardPage'
 import TasksPage from '@/pages/TasksPage'
 import GoalsPage from '@/pages/GoalsPage'
@@ -20,6 +21,8 @@ export default function App() {
         <Route path="/login" element={<LoginPage />} />
         {/* 个人网站首页:全屏海洋下潜叙事,独立于工作台外壳 */}
         <Route path="/" element={<LandingPage />} />
+        {/* 作品集:个人网站对外展示页,同样独立全屏 */}
+        <Route path="/portfolio" element={<PortfolioPage />} />
         <Route element={<AppLayout />}>
           <Route path="home" element={<DashboardPage />} />
           <Route path="tasks" element={<TasksPage />} />

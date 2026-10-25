@@ -58,6 +58,7 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
   const items = useMemo<PaletteItem[]>(() => {
     const pages: PaletteItem[] = [
       { key: 'p-/', group: '页面', label: '工作台', keywords: 'home dashboard 主页 仪表盘', icon: <LayoutDashboard size={15} />, run: () => { navigate('/home'); onClose() } },
+      { key: 'p-portfolio', group: '页面', label: '作品集', keywords: 'portfolio works 作品 作品集 画册', icon: <Waves size={15} />, run: () => { navigate('/portfolio'); onClose() } },
       { key: 'p-ocean', group: '页面', label: '个人主页 · 数字海洋', keywords: 'ocean landing 首页 下潜 个人网站', icon: <Waves size={15} />, run: () => { navigate('/'); onClose() } },
       { key: 'p-tasks', group: '页面', label: '任务中心', keywords: 'task todo 任务 待办 看板', icon: <ListChecks size={15} />, run: () => { navigate('/tasks'); onClose() } },
       { key: 'p-habits', group: '页面', label: '习惯打卡', keywords: 'habit 习惯 打卡 签到', icon: <Zap size={15} />, run: () => { navigate('/habits'); onClose() } },

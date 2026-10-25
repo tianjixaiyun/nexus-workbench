@@ -13,6 +13,8 @@ import type {
   NewTask,
   Note,
   Task,
+  WorkItem,
+  NewWork,
 } from './types'
 
 /** 单个实体的通用增删改查接口 */
@@ -36,4 +38,5 @@ export interface DataAdapter {
   milestones: EntityStore<Milestone, NewMilestone>
   dailies: EntityStore<Daily, NewDaily>
   goals: EntityStore<Goal, NewGoal>
+  works: EntityStore<WorkItem, NewWork>
 }

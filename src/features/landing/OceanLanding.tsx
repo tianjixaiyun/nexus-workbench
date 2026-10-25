@@ -602,6 +602,7 @@ export default function OceanLanding() {
           </div>
           <nav className="pointer-events-auto hidden items-center gap-7 text-[13px] text-white/85 md:flex">
             <button onClick={() => navigate('/home')} className="cursor-pointer transition-colors hover:text-white">工作台</button>
+            <button onClick={() => navigate('/portfolio')} className="cursor-pointer transition-colors hover:text-white">作品集</button>
             <button onClick={() => navigate('/focus')} className="cursor-pointer transition-colors hover:text-white">专注</button>
             <button onClick={() => navigate('/sanctuary')} className="cursor-pointer transition-colors hover:text-white">云鲸圣域</button>
             <CapsuleButton primary onClick={() => navigate('/home')}>开始使用 →</CapsuleButton>
@@ -726,6 +727,7 @@ export default function OceanLanding() {
             </p>
             <div className="mt-10 flex flex-wrap justify-center gap-4">
               <CapsuleButton primary onClick={() => navigate('/home')}>进入工作台 →</CapsuleButton>
+              <CapsuleButton onClick={() => navigate('/portfolio')}>看看作品集</CapsuleButton>
               <CapsuleButton onClick={() => scrollTo(0)}>回到水面 ↑</CapsuleButton>
             </div>
             <p className="mt-14 text-[10px] tracking-[0.3em] text-white/50">NEXUS · PERSONAL DIGITAL OCEAN · 2026</p>

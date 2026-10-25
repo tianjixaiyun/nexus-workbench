@@ -179,3 +179,17 @@ export interface Goal {
 
 export type NewGoal = Pick<Goal, 'title'> &
   Partial<Pick<Goal, 'emoji' | 'color' | 'tag' | 'mode' | 'manualProgress' | 'deadline'>>
+
+/** 作品集条目:个人网站对外展示的作品(图片为 dataURL 或外链) */
+export interface WorkItem {
+  id: string
+  title: string
+  category: string
+  year: string
+  description: string
+  images: string[]
+  link: string
+  createdAt: string
+}
+
+export type NewWork = Omit<WorkItem, 'id' | 'createdAt'>

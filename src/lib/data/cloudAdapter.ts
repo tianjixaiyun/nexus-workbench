@@ -14,6 +14,8 @@ import type {
   NewTask,
   Note,
   Task,
+  WorkItem,
+  NewWork,
 } from './types'
 import { supabase } from '../config'
 
@@ -135,6 +137,34 @@ const fromNoteRow = (r: Row): Note => ({
   updatedAt: r.updated_at as string,
 })
 
+const workRow = (w: Partial<WorkItem>): Row => ({
+  title: w.title ?? '',
+  category: w.category ?? '',
+  year: w.year ?? '',
+  description: w.description ?? '',
+  images: JSON.stringify(w.images ?? []),
+  link: w.link ?? '',
+})
+
+const fromWorkRow = (r: Row): WorkItem => ({
+  id: String(r.id),
+  title: (r.title as string) ?? '',
+  category: (r.category as string) ?? '',
+  year: (r.year as string) ?? '',
+  description: (r.description as string) ?? '',
+  images: safeParseImages(r.images as string | string[] | null),
+  link: (r.link as string) ?? '',
+  createdAt: (r.created_at as string) ?? '',
+})
+
+function safeParseImages(v: unknown): string[] {
+  if (Array.isArray(v)) return v.filter((x): x is string => typeof x === 'string')
+  if (typeof v === 'string') {
+    try { const a = JSON.parse(v); return Array.isArray(a) ? a.filter((x): x is string => typeof x === 'string') : [] } catch { return [] }
+  }
+  return []
+}
+
 const linkRow = (l: Partial<LinkItem>): Row => ({
   name: l.name,
   url: l.url,
@@ -226,4 +256,5 @@ export const cloudAdapter: DataAdapter = {
   milestones: makeCloudStore<Milestone, NewMilestone>('milestones', 'created_at', milestoneRow, fromMilestoneRow),
   dailies: makeCloudStore<Daily, NewDaily>('dailies', 'created_at', dailyRow, fromDailyRow),
   goals: makeCloudStore<Goal, NewGoal>('goals', 'created_at', goalRow, fromGoalRow),
+  works: makeCloudStore<WorkItem, NewWork>('works', 'created_at', workRow, fromWorkRow),
 }

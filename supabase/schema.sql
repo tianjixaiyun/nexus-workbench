@@ -5,6 +5,28 @@
 -- ============================================================
 
 -- ---------- 任务表 ----------
+-- 作品集(个人网站对外展示的作品)
+create table if not exists works (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null default auth.uid() references auth.users (id) on delete cascade,
+  title text not null default '',
+  category text not null default '',
+  year text not null default '',
+  description text not null default '',
+  images jsonb not null default '[]'::jsonb,
+  link text not null default '',
+  created_at timestamptz not null default now()
+);
+
+alter table works enable row level security;
+create policy "works 属于当前用户" on works for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
+do $$
+begin
+  if not exists (select 1 from pg_publication_tables where publication_name = 'supabase_realtime' and tablename = 'works') then
+    alter publication supabase_realtime add table works;
+  end if;
+end $$;
+
 create table if not exists public.tasks (
   id uuid primary key,
   user_id uuid not null references auth.users (id) on delete cascade,

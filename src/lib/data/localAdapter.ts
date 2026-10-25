@@ -13,8 +13,10 @@ import type {
   NewMilestone,
   NewNote,
   NewTask,
+  NewWork,
   Note,
   Task,
+  WorkItem,
 } from './types'
 import { nowIso, uid } from '../utils'
 
@@ -29,6 +31,7 @@ const db = new Dexie(DB_NAME) as Dexie & {
   milestones: EntityTable<Milestone, 'id'>
   dailies: EntityTable<Daily, 'id'>
   goals: EntityTable<Goal, 'id'>
+  works: EntityTable<WorkItem, 'id'>
 }
 
 // v2:新增 habits / milestones 表;v3:新增 dailies(每日心情)表;v4:新增 goals 表(旧表结构沿用)
@@ -136,6 +139,42 @@ const notes: EntityStore<Note, NewNote> = {
   async remove(id) {
     await db.notes.delete(id)
   },
+}
+
+const works: EntityStore<WorkItem, NewWork> = {
+  async list() {
+    const all = await db.works.toArray()
+    return all
+      .map(normalizeWork)
+      .sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1))
+  },
+  async create(input: NewWork) {
+    const work: WorkItem = { ...normalizeWork(input), id: uid(), createdAt: nowIso() }
+    await db.works.add(work)
+    return work
+  },
+  async update(id, patch) {
+    await db.works.update(id, patch as UpdateSpec<WorkItem>)
+    const work = await db.works.get(id)
+    if (!work) throw new Error('作品不存在')
+    return normalizeWork(work)
+  },
+  async remove(id) {
+    await db.works.delete(id)
+  },
+}
+
+function normalizeWork(w: Partial<WorkItem>): WorkItem {
+  return {
+    id: w.id ?? '',
+    title: w.title ?? '',
+    category: w.category ?? '',
+    year: w.year ?? '',
+    description: w.description ?? '',
+    images: Array.isArray(w.images) ? w.images : [],
+    link: w.link ?? '',
+    createdAt: w.createdAt ?? nowIso(),
+  }
 }
 
 const links: EntityStore<LinkItem, NewLink> = {
@@ -286,5 +325,10 @@ const goals: EntityStore<Goal, NewGoal> = {
   },
 }
 
-export const localAdapter: DataAdapter = { tasks, notes, links, habits, milestones, dailies, goals }
+// v5:新增 works(作品集)表
+db.version(5).stores({
+  works: 'id, createdAt',
+})
+
+export const localAdapter: DataAdapter = { tasks, notes, links, habits, milestones, dailies, goals, works }
 export { LOCAL_USER_ID, db }
