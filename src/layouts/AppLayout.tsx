@@ -41,7 +41,8 @@ import { QuickCapture, QuickCaptureFab } from '@/components/QuickCapture'
 import { ShortcutsHelp } from '@/components/ShortcutsHelp'
 
 const NAV_ITEMS = [
-  { to: '/', label: '工作台', icon: LayoutDashboard },
+  { to: '/home', label: '工作台', icon: LayoutDashboard },
+  { to: '/', label: '个人主页', icon: Waves },
   { to: '/tasks', label: '任务中心', icon: ListChecks },
   { to: '/goals', label: '目标', icon: Target },
   { to: '/habits', label: '习惯打卡', icon: Zap },
@@ -54,7 +55,7 @@ const NAV_ITEMS = [
 ] as const
 
 const PAGE_TITLES: Record<string, string> = {
-  '/': '工作台',
+  '/home': '工作台',
   '/tasks': '任务中心',
   '/goals': '目标',
   '/habits': '习惯打卡',

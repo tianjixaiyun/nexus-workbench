@@ -1,5 +1,6 @@
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router'
 import { AppLayout } from '@/layouts/AppLayout'
+import LandingPage from '@/pages/LandingPage'
 import DashboardPage from '@/pages/DashboardPage'
 import TasksPage from '@/pages/TasksPage'
 import GoalsPage from '@/pages/GoalsPage'
@@ -17,8 +18,10 @@ export default function App() {
     <BrowserRouter basename={import.meta.env.PROD ? '/nexus-workbench' : '/'}>
       <Routes>
         <Route path="/login" element={<LoginPage />} />
+        {/* 个人网站首页:全屏海洋下潜叙事,独立于工作台外壳 */}
+        <Route path="/" element={<LandingPage />} />
         <Route element={<AppLayout />}>
-          <Route index element={<DashboardPage />} />
+          <Route path="home" element={<DashboardPage />} />
           <Route path="tasks" element={<TasksPage />} />
           <Route path="goals" element={<GoalsPage />} />
           <Route path="habits" element={<HabitsPage />} />

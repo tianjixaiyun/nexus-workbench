@@ -201,7 +201,7 @@ const INTENTS: Intent[] = [
       },
       { name: 'days', value: String(s.moodRecent.length) },
     ],
-    actions: [['记今天的心情', '/']],
+    actions: [['记今天的心情', '/home']],
   },
   {
     key: 'find',

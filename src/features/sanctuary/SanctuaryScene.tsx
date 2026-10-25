@@ -721,7 +721,7 @@ export default function SanctuaryScene() {
               {freeLook ? '✓ 自由视角 · 拖拽旋转' : '自由视角'}
             </button>
             <button
-              onClick={() => navigate('/')}
+              onClick={() => navigate('/home')}
               className="cursor-pointer rounded-full border border-white/20 bg-white/5 px-4 py-2 text-[11px] tracking-wider text-white/75 backdrop-blur-md transition-all hover:border-white/40"
             >
               进入工作台
@@ -778,7 +778,7 @@ export default function SanctuaryScene() {
               一道光环昼夜巡游,替你记住每一次专注的呼吸。
             </p>
             <div className="mt-10 flex flex-wrap gap-4">
-              <CapsuleButton primary onClick={() => navigate('/')}>
+              <CapsuleButton primary onClick={() => navigate('/home')}>
                 进入工作台 →
               </CapsuleButton>
               <CapsuleButton onClick={() => navigate('/focus')}>开始专注</CapsuleButton>
@@ -838,7 +838,7 @@ export default function SanctuaryScene() {
               ELEVATE YOUR FOCUS THROUGH TIMELESS RESONANCE.
             </p>
             <div className="mt-10 flex flex-wrap justify-center gap-4">
-              <CapsuleButton primary onClick={() => navigate('/')}>
+              <CapsuleButton primary onClick={() => navigate('/home')}>
                 回到工作台
               </CapsuleButton>
               <CapsuleButton onClick={() => setFreeLook(true)}>自由视角探索</CapsuleButton>

@@ -19,8 +19,8 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false)
 
   // 本地模式不需要登录;已登录则直接进主界面
-  if (!isCloudMode) return <Navigate to="/" replace />
-  if (ready && user) return <Navigate to="/" replace />
+  if (!isCloudMode) return <Navigate to="/home" replace />
+  if (ready && user) return <Navigate to="/home" replace />
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault()
