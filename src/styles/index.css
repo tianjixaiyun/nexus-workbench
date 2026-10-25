@@ -297,3 +297,10 @@ html.light body::before {
     color: var(--color-txt-primary);
   }
 }
+
+/* 圆形主题切换(View Transitions):新旧画面不自带动画,交给 clip-path 圆 */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation: none;
+  mix-blend-mode: normal;
+}

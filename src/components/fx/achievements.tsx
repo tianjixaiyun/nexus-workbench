@@ -33,6 +33,7 @@ interface Metrics {
   works: number
   memos: number
   expenses: number
+  konami: boolean
   night: boolean
 }
 
@@ -83,7 +84,7 @@ export function collectMetrics(): Metrics {
     return tagged.length > 0 && tagged.every((t: Task) => t.status === 'done')
   })
   const hour = new Date().getHours()
-  return { doneTasks, focusTotal, maxStreak, goalDone, works: works.length, memos, expenses, night: hour >= 23 || hour < 5 }
+  return { doneTasks, focusTotal, maxStreak, goalDone, works: works.length, memos, expenses, konami: localStorage.getItem('nexus-konami') === '1', night: hour >= 23 || hour < 5 }
 }
 
 export const ACHIEVEMENT_DEFS: (Achievement & { test: (m: Metrics) => boolean })[] = [
@@ -99,6 +100,7 @@ export const ACHIEVEMENT_DEFS: (Achievement & { test: (m: Metrics) => boolean })
   { id: 'memo-1', icon: '💭', name: '第一句碎碎念', desc: '在碎碎念时间线记下第一条想法', test: (m) => m.memos >= 1 },
   { id: 'memo-30', icon: '🫧', name: '气泡三十枚', desc: '累计记下 30 条碎碎念', test: (m) => m.memos >= 30 },
   { id: 'expense-1', icon: '🪙', name: '第一笔账', desc: '记下第一笔收支', test: (m) => m.expenses >= 1 },
+  { id: 'konami', icon: '🔑', name: '深海密码', desc: '输入了那串古老的秘籍(↑↑↓↓←→←→BA)', test: (m) => m.konami },
   { id: 'night', icon: '🌙', name: '深海访客', desc: '在 23:00-5:00 的深夜造访', test: (m) => m.night },
 ]
 

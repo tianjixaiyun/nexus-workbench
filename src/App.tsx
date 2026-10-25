@@ -1,4 +1,4 @@
-import { BrowserRouter, Navigate, Route, Routes } from 'react-router'
+import { BrowserRouter, Route, Routes } from 'react-router'
 import { AppLayout } from '@/layouts/AppLayout'
 import LandingPage from '@/pages/LandingPage'
 import PortfolioPage from '@/pages/PortfolioPage'
@@ -7,6 +7,8 @@ import ScrapbookPage from '@/pages/ScrapbookPage'
 import MemosPage from '@/pages/MemosPage'
 import ExpensePage from '@/pages/ExpensePage'
 import AboutPage from '@/pages/AboutPage'
+import NotFoundPage from '@/pages/NotFoundPage'
+import { KonamiEgg } from '@/components/fx/KonamiEgg'
 import { PinGuard } from '@/components/fx/PinGuard'
 import { FluidTrail } from '@/components/fx/FluidTrail'
 import { GlobalSkew } from '@/components/fx/motion'
@@ -37,6 +39,7 @@ export default function App() {
       <PinGuard />
       <FluidTrail />
       <GlobalSkew />
+      <KonamiEgg />
       <AchievementWatcher />
       <Routes>
         <Route path="/login" element={<LoginPage />} />
@@ -62,7 +65,8 @@ export default function App() {
           <Route path="expense" element={<ExpensePage />} />
           <Route path="about" element={<AboutPage />} />
         </Route>
-        <Route path="*" element={<Navigate to="/" replace />} />
+        {/* 深海 404:未知路由不再静默跳转 */}
+        <Route path="*" element={<NotFoundPage />} />
       </Routes>
     </BrowserRouter>
   )

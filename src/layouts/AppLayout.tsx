@@ -319,7 +319,25 @@ export function AppLayout() {
           <h1 className="text-sm font-semibold tracking-wider text-txt-secondary">{title}</h1>
           <div className="flex items-center gap-3">
             <button
-              onClick={() => setTheme(theme === 'light' ? 'dark' : 'light')}
+              onClick={(e) => {
+                const next = theme === 'light' ? 'dark' : 'light'
+                // 病毒式圆形揭示:从按钮处荡开切换明暗(不支持时直接切)
+                const doc = document as Document & { startViewTransition?: (cb: () => void) => { ready: Promise<void> } }
+                if (!doc.startViewTransition) {
+                  setTheme(next)
+                  return
+                }
+                const x = e.clientX
+                const y = e.clientY
+                const vt = doc.startViewTransition(() => setTheme(next))
+                void vt.ready.then(() => {
+                  const r = Math.hypot(Math.max(x, window.innerWidth - x), Math.max(y, window.innerHeight - y))
+                  document.documentElement.animate(
+                    { clipPath: [`circle(0px at ${x}px ${y}px)`, `circle(${r}px at ${x}px ${y}px)`] },
+                    { duration: 520, easing: 'ease-in-out', pseudoElement: '::view-transition-new(root)' },
+                  )
+                })
+              }}
               className="cursor-pointer rounded-xl border border-line-2 bg-surface-1 p-1.5 text-txt-muted transition-colors hover:border-accent hover:text-accent"
               title={theme === 'light' ? '切换到深色主题' : '切换到亮色主题'}
               aria-label="切换主题"
