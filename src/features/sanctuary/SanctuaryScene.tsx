@@ -667,6 +667,61 @@ const SECTIONS = [
   { eyebrow: '终章 · 呼吸', align: 'center' as const },
 ]
 
+// ---------- HUD 观测框:四角角标/刻度/数据读出/扫描线 ----------
+const HUD_ACTS = ['定场 · 光轨', '星灵 · 巡游', '生态 · 起伏', '光环 · 收官']
+
+function HudFrame({ act, progress }: { act: number; progress: number }) {
+  const corner = 'pointer-events-none absolute h-7 w-7 border-cyan-300/50'
+  const ticks = Array.from({ length: 21 })
+  return (
+    <div className="nexus-hud pointer-events-none absolute inset-4 z-[6] md:inset-6" aria-hidden>
+      <style>{`
+        @keyframes nexus-hud-scan { 0% { transform: translateX(-30%); opacity: 0 } 12% { opacity: .8 } 88% { opacity: .8 } 100% { transform: translateX(130%); opacity: 0 } }
+        @keyframes nexus-hud-pulse { 0%,100% { opacity: .45 } 50% { opacity: .9 } }
+      `}</style>
+      {/* 四角 L 形角标 */}
+      <span className={`${corner} top-0 left-0 border-t-2 border-l-2`} />
+      <span className={`${corner} top-0 right-0 border-t-2 border-r-2`} />
+      <span className={`${corner} bottom-0 left-0 border-b-2 border-l-2`} />
+      <span className={`${corner} bottom-0 right-0 border-b-2 border-r-2`} />
+      {/* 顶部扫描线 */}
+      <div className="absolute inset-x-8 top-0 h-px overflow-hidden">
+        <div className="h-full w-1/3 bg-gradient-to-r from-transparent via-cyan-300 to-transparent" style={{ animation: 'nexus-hud-scan 6s linear infinite' }} />
+      </div>
+      {/* 左侧刻度尺 */}
+      <div className="absolute top-1/2 left-0 hidden -translate-y-1/2 flex-col gap-1.5 md:flex">
+        {ticks.map((_, i) => (
+          <span
+            key={i}
+            className={`h-px bg-cyan-300 ${i % 5 === 0 ? 'w-4 opacity-60' : 'w-2 opacity-30'}`}
+          />
+        ))}
+      </div>
+      {/* 右侧刻度尺 */}
+      <div className="absolute top-1/2 right-0 hidden -translate-y-1/2 flex-col items-end gap-1.5 md:flex">
+        {ticks.map((_, i) => (
+          <span
+            key={i}
+            className={`h-px bg-cyan-300 ${i % 5 === 0 ? 'w-4 opacity-60' : 'w-2 opacity-30'}`}
+          />
+        ))}
+      </div>
+      {/* 底部数据读出 */}
+      <div className="absolute bottom-1 left-1/2 flex -translate-x-1/2 items-center gap-3 font-mono text-[10px] tracking-[0.2em] whitespace-nowrap text-cyan-200/80">
+        <span className="rounded-sm border border-cyan-300/30 bg-black/30 px-1.5 py-0.5" style={{ animation: 'nexus-hud-pulse 2.4s ease-in-out infinite' }}>
+          ◉ SCANNING
+        </span>
+        <span className="hidden sm:inline">ACT {String(act + 1).padStart(2, '0')}/04 · {HUD_ACTS[act]}</span>
+        <span>SEQ {String(Math.round(progress * 100)).padStart(3, '0')}%</span>
+      </div>
+      {/* 顶部左读出 */}
+      <div className="absolute top-1 left-2 hidden font-mono text-[10px] tracking-[0.25em] text-cyan-200/50 md:block">
+        NEXUS · SANCTUARY OBSERVER
+      </div>
+    </div>
+  )
+}
+
 function CapsuleButton({ children, onClick, primary }: { children: ReactNode; onClick: (e: React.MouseEvent) => void; primary?: boolean }) {
   return (
     <Magnetic>
@@ -768,6 +823,9 @@ export default function SanctuaryScene() {
             </button>
           </div>
         </div>
+
+        {/* HUD 观测框 */}
+        <HudFrame act={activeSection} progress={progress} />
 
         {/* 右侧分镜圆点导航 */}
         <div className="pointer-events-auto absolute top-1/2 right-4 flex -translate-y-1/2 flex-col items-center gap-3 md:right-7">
