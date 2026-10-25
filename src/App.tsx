@@ -14,7 +14,7 @@ import LoginPage from '@/pages/LoginPage'
 
 export default function App() {
   return (
-    <BrowserRouter>
+    <BrowserRouter basename={import.meta.env.PROD ? '/nexus-workbench' : '/'}>
       <Routes>
         <Route path="/login" element={<LoginPage />} />
         <Route element={<AppLayout />}>

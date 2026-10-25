@@ -5,6 +5,7 @@ import { VitePWA } from 'vite-plugin-pwa'
 import { fileURLToPath, URL } from 'node:url'
 
 export default defineConfig({
+  base: '/nexus-workbench/',
   plugins: [
     react(),
     tailwindcss(),
@@ -17,8 +18,8 @@ export default defineConfig({
         short_name: 'NEXUS',
         description: '任务 · 习惯 · 专注 · 笔记 · 数据,一体化的个人效率工作台',
         lang: 'zh-CN',
-        start_url: '/',
-        scope: '/',
+        start_url: '/nexus-workbench/',
+        scope: '/nexus-workbench/',
         display: 'standalone',
         orientation: 'any',
         theme_color: '#05080f',
