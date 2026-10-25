@@ -6,6 +6,7 @@ import AchievementsPage from '@/pages/AchievementsPage'
 import ScrapbookPage from '@/pages/ScrapbookPage'
 import MemosPage from '@/pages/MemosPage'
 import ExpensePage from '@/pages/ExpensePage'
+import AboutPage from '@/pages/AboutPage'
 import { PinGuard } from '@/components/fx/PinGuard'
 import { FluidTrail } from '@/components/fx/FluidTrail'
 import { CustomCursor } from '@/components/fx/CustomCursor'
@@ -57,6 +58,7 @@ export default function App() {
           <Route path="achievements" element={<AchievementsPage />} />
           <Route path="memos" element={<MemosPage />} />
           <Route path="expense" element={<ExpensePage />} />
+          <Route path="about" element={<AboutPage />} />
         </Route>
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

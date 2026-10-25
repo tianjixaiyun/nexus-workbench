@@ -707,6 +707,7 @@ export default function OceanLanding() {
           </div>
           <nav className="pointer-events-auto hidden items-center gap-7 text-[13px] text-white/85 md:flex">
             <button onClick={() => navigate('/home')} className="cursor-pointer transition-colors hover:text-white">工作台</button>
+            <button onClick={(e) => liquidNavigate(navigate, '/about', e)} className="cursor-pointer transition-colors hover:text-white">关于我</button>
             <button onClick={(e) => liquidNavigate(navigate, '/portfolio', e)} className="cursor-pointer transition-colors hover:text-white">作品集</button>
             <button onClick={(e) => liquidNavigate(navigate, '/focus', e)} className="cursor-pointer transition-colors hover:text-white">专注</button>
             <button onClick={(e) => liquidNavigate(navigate, '/sanctuary', e)} className="cursor-pointer transition-colors hover:text-white">云鲸圣域</button>
@@ -771,7 +772,13 @@ export default function OceanLanding() {
               <ScrambleText text="向深处去。" delay={1150} />
             </h1>
             <p className="mt-6 text-sm leading-relaxed text-white/85 drop-shadow md:text-base">
-              <BlurText text="这不只是工作台——是我的个人网站、任务、目标、习惯与笔记,一座随深度生长的数字海洋。" delay={1900} />
+              <BlurText text={(() => {
+                try {
+                  const p = JSON.parse(localStorage.getItem('nexus-profile-v1') ?? 'null')
+                  if (p?.name) return `${p.name}的数字海洋:任务、目标、习惯与笔记,随深度一起生长。`
+                } catch { /* 无档案用默认 */ }
+                return '这不只是工作台——是我的个人网站、任务、目标、习惯与笔记,一座随深度生长的数字海洋。'
+              })()} delay={1900} />
             </p>
             <div className="mt-10 flex flex-wrap justify-center gap-4">
               <CapsuleButton primary onClick={() => scrollTo(containerRef.current?.clientHeight ?? 800)}>潜入 ↓</CapsuleButton>
