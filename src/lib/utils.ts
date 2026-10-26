@@ -2,6 +2,16 @@ export function cn(...parts: Array<string | false | null | undefined>): string {
   return parts.filter(Boolean).join(' ')
 }
 
+/**
+ * URL 协议白名单:仅放行 http/https/mailto/tel 与无协议的相对路径。
+ * 防 javascript:/data:/vbscript: 等危险协议进入 markdown 渲染与链接中心。
+ */
+export function isSafeUrl(url: string): boolean {
+  const m = /^[a-zA-Z][a-zA-Z0-9+.-]*:/.exec(url.trim())
+  if (!m) return true
+  return ['http:', 'https:', 'mailto:', 'tel:'].includes(m[0].toLowerCase())
+}
+
 /** 生成 UUID(本地与云端模式共用同一套 ID 方案) */
 export function uid(): string {
   if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {

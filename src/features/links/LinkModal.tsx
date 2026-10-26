@@ -24,6 +24,7 @@ export function LinkModal({ open, onClose, link, groups }: LinkModalProps) {
   const [name, setName] = useState('')
   const [url, setUrl] = useState('')
   const [group, setGroup] = useState('')
+  const [urlError, setUrlError] = useState('')
   const { add, update } = useLinkStore()
 
   useEffect(() => {
@@ -37,14 +38,30 @@ export function LinkModal({ open, onClose, link, groups }: LinkModalProps) {
       setUrl('')
       setGroup('')
     }
+    setUrlError('')
   }, [open, link])
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault()
     if (!name.trim() || !url.trim()) return
+    const raw = url.trim()
+    // 协议校验:显式写了 javascript:/data: 等危险协议直接拒绝保存
+    if (/^[a-zA-Z][a-zA-Z0-9+.-]*:/.test(raw) && !/^https?:\/\//i.test(raw)) {
+      setUrlError('链接仅支持 http/https 协议')
+      return
+    }
+    const normalized = normalizeUrl(raw)
+    try {
+      const protocol = new URL(normalized).protocol
+      if (protocol !== 'http:' && protocol !== 'https:') throw new Error(protocol)
+    } catch {
+      setUrlError('链接格式不正确，仅支持 http/https')
+      return
+    }
+    setUrlError('')
     const payload = {
       name: name.trim(),
-      url: normalizeUrl(url),
+      url: normalized,
       group: group.trim() || '未分组',
     }
     if (link) await update(link.id, payload)
@@ -71,6 +88,7 @@ export function LinkModal({ open, onClose, link, groups }: LinkModalProps) {
             onChange={(e) => setUrl(e.target.value)}
             placeholder="https://…(可不带协议头)"
           />
+          {urlError && <p className="mt-1.5 text-xs text-danger">{urlError}</p>}
         </div>
         <div>
           <label className="mb-1.5 block text-xs text-txt-secondary">分组</label>

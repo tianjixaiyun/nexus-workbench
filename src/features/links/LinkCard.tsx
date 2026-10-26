@@ -1,6 +1,6 @@
 import { ExternalLink, Pencil, Trash2 } from 'lucide-react'
 import type { LinkItem } from '@/lib/data/types'
-import { cn } from '@/lib/utils'
+import { cn, isSafeUrl } from '@/lib/utils'
 
 /** 按名称哈希选一个渐变配色,同一链接每次渲染颜色稳定 */
 const GRADIENTS = [
@@ -31,7 +31,8 @@ export function LinkCard({ link, onEdit, onDelete }: {
 
   return (
     <a
-      href={link.url}
+      // 协议白名单:历史数据/导入数据里的危险协议(如 javascript:)降级为不可点击文本
+      href={isSafeUrl(link.url) ? link.url : undefined}
       target="_blank"
       rel="noopener noreferrer"
       className="glass-card glass-card-hover group flex items-center gap-3 p-4"
