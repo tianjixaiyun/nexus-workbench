@@ -55,6 +55,9 @@ export default defineConfig({
       output: {
         advancedChunks: {
           groups: [
+            // react 生态先于 three 分组捕获:否则 rolldown 会把 react/zustand 并进 three 组,
+            // 入口静态引用 zustand 导致 three 分包被 modulepreload 拉回首屏
+            { name: 'react', test: /node_modules[\\/](react|react-dom|scheduler|react-reconciler|its|zustand)[\\/]/, priority: 2 },
             { name: 'three', test: /node_modules[\\/]three|node_modules[\\/]@react-three/ },
             { name: 'echarts', test: /node_modules[\\/]echarts/ },
             { name: 'supabase', test: /node_modules[\\/]@supabase/ },

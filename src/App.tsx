@@ -2,7 +2,6 @@ import { Suspense, lazy } from 'react'
 import { Loader2 } from 'lucide-react'
 import { BrowserRouter, Route, Routes } from 'react-router'
 import { AppLayout } from '@/layouts/AppLayout'
-import DashboardPage from '@/pages/DashboardPage'
 import { KonamiEgg } from '@/components/fx/KonamiEgg'
 import { PinGuard } from '@/components/fx/PinGuard'
 import { FluidTrail } from '@/components/fx/FluidTrail'
@@ -15,6 +14,7 @@ import { AchievementWatcher } from '@/components/fx/achievements'
 // 路由级懒加载:重资源页(three 945KB / echarts 552KB 等)按需拉取,
 // 直连工作台的访客不再为首页/圣域预载 3D 与图表库
 const TasksPage = lazy(() => import('@/pages/TasksPage'))
+const DashboardPage = lazy(() => import('@/pages/DashboardPage'))
 const GoalsPage = lazy(() => import('@/pages/GoalsPage'))
 const HabitsPage = lazy(() => import('@/pages/HabitsPage'))
 const FocusPage = lazy(() => import('@/pages/FocusPage'))
@@ -70,8 +70,8 @@ export default function App() {
         {/* 海面之上·手帐:剪贴簿风彩蛋页 */}
         <Route path="/scrapbook" element={<Suspense fallback={<PageFallback />}><ScrapbookPage /></Suspense>} />
         <Route element={<AppLayout />}>
-          {/* 工作台首屏 eager,其余页面按需加载 */}
-          <Route path="home" element={<DashboardPage />} />
+          {/* 工作台首屏也按需:DashboardView 的 echarts 图表不进入口静态依赖图 */}
+          <Route path="home" element={<Suspense fallback={<PageFallback />}><DashboardPage /></Suspense>} />
           <Route path="tasks" element={<Suspense fallback={<PageFallback />}><TasksPage /></Suspense>} />
           <Route path="goals" element={<Suspense fallback={<PageFallback />}><GoalsPage /></Suspense>} />
           <Route path="habits" element={<Suspense fallback={<PageFallback />}><HabitsPage /></Suspense>} />
