@@ -47,6 +47,10 @@
 | 年度报告 | 「生成我的报告」一键生成 Wrapped 风格全屏报告:头衔评定、完成率、累计专注、最长连击、最勤的一天、最常出现的标签(网易云年度报告式) |
 | 键盘操作 | Linear 风格全局快捷键:`1-8` 切页、`Q` 快速捕捉、`N` 新建任务、`M` 新建便签、`?` 快捷键帮助,输入框内自动失效 |
 | 主题 | 深色科技感(默认)/ 亮色清爽,顶栏 ☀️/🌙 一键切换、即时生效、刷新不丢;图表与热力图同步换色 |
+| 人脉 CRM `/contacts` | Ultimate Brain 式联系人面板:卡片化人脉档案(公司/职位/标签/备注/邮箱电话)、跟进提醒(逾期/今日/N 天后)、一键「记一笔联系」;本地 IndexedDB 与云端 Supabase 同源 |
+| 自动日志 `/journal` | Dayflow/Meridian 式:打开即按真实数据自动写成当天工作日志(完成任务/专注番茄/习惯/心情/碎碎念 + 自动评语),可编辑可重新生成,历史回看;本地模板引擎离线可用,后续可直接接 LLM |
+| 笔记双链 | Obsidian 式 `[[标题]]`:双链自动变可点链接,点击跳转对应笔记(不存在则提示创建),编辑弹窗显示反向链接面板 |
+| 任务模板库 | 内置 8 套模板(每日站会/GTD 周回顾/深度工作日/产品发布/健身/内容创作/出行打包/面试准备),一键批量生成任务,自带模板标签与相对截止日 |
 | PWA | `npm run build && npm run preview` 后浏览器地址栏出现「安装」按钮,可装到桌面当独立 App 用;内置离线缓存与更新 |
 | 实时同步 | 云端模式下基于 Supabase Realtime,多设备/多标签页的改动**实时推送**(其他设备改了任务,这边秒级自动刷新) |
 | 天气 | 基于 Open-Meteo(免密钥),城市搜索、当前天气 + 三日预报、30 分钟缓存,断网优雅降级 |
@@ -94,10 +98,10 @@ npm run build      # 构建生产版本
 
 1. **多人共享工作区** — 工作区/成员邀请/按角色分配任务;依赖真实 Supabase 项目(实时同步地基已就绪)
 2. **接入真 LLM 的助手升级** — 当前助手是本地规则引擎;接 OpenAI/Claude/DeepSeek API 后可复用现有提示词模板(槽位已就绪)获得真正的自然语言对话
-3. **AI 自动日志** — 类 [Dayflow](https://www.producthunt.com/products/dayflow-4) / [Meridian](https://www.producthunt.com/products/meridian-16):把当天的任务/专注/心情自动写成一段工作日志(可先走本地模板,后接 LLM)
-4. **个人 CRM** — [Ultimate Brain](https://thomasjfrank.com/brain) 3.0 的联系人面板:记录人脉、跟进提醒
-5. **笔记双链与标签树** — Obsidian 式 `[[链接]]` 与 flomo 式标签树状导航
-6. **模板库与周期模板** — 每日站会清单/周报模板一键生成任务
+3. **AI 自动日志(✅ 已上线本地版)** — 类 [Dayflow](https://www.producthunt.com/products/dayflow-4) / [Meridian](https://www.producthunt.com/products/meridian-16):`/journal` 打开即按真实数据自动写成当天工作日志,可编辑可回看;`src/lib/journal.ts` 已预留结构化事实槽位,接 OpenAI/Claude/DeepSeek API 后可升级为真 LLM 生成
+4. **个人 CRM(✅ 已上线)** — [Ultimate Brain](https://thomasjfrank.com/brain) 3.0 的联系人面板:`/contacts` 人脉档案 + 跟进提醒 + 一键记录联系;云端模式需重跑一次 `supabase/schema.sql`(幂等)
+5. **笔记双链(✅ 已上线)与标签树** — Obsidian 式 `[[链接]]` + 反向链接面板已就绪;flomo 式标签树状导航待续
+6. **模板库(✅ 已上线)与周期模板** — 8 套内置模板一键批量生成任务已就绪;自定义用户模板与周期模板待续
 7. **浏览器插件快速捕捉** — 任意网页一键存入收件箱(需要打包扩展)
 
 ## 安装为桌面应用(PWA)

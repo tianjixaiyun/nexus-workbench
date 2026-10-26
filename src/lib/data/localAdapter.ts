@@ -18,6 +18,8 @@ import type {
   NewExpense,
   Memo,
   Expense,
+  Contact,
+  NewContact,
   Note,
   Task,
   WorkItem,
@@ -38,6 +40,7 @@ const db = new Dexie(DB_NAME) as Dexie & {
   works: EntityTable<WorkItem, 'id'>
   memos: EntityTable<Memo, 'id'>
   expenses: EntityTable<Expense, 'id'>
+  contacts: EntityTable<Contact, 'id'>
 }
 
 // v2:新增 habits / milestones 表;v3:新增 dailies(每日心情)表;v4:新增 goals 表(旧表结构沿用)
@@ -409,5 +412,56 @@ db.version(6).stores({
   expenses: 'id, date, kind',
 })
 
-export const localAdapter: DataAdapter = { tasks, notes, links, habits, milestones, dailies, goals, works, memos, expenses }
+// v7:新增 contacts(人脉 CRM)表
+db.version(7).stores({
+  contacts: 'id, name, nextFollowUp',
+})
+
+/** 归一化联系人:补齐字段默认值 */
+function normalizeContact(c: Partial<Contact> & { name: string }): Contact {
+  return {
+    id: c.id ?? '',
+    name: c.name,
+    company: c.company ?? '',
+    role: c.role ?? '',
+    tags: c.tags ?? [],
+    email: c.email ?? '',
+    phone: c.phone ?? '',
+    note: c.note ?? '',
+    lastContactAt: c.lastContactAt ?? null,
+    nextFollowUp: c.nextFollowUp ?? null,
+    createdAt: c.createdAt ?? nowIso(),
+  }
+}
+
+const contacts: EntityStore<Contact, NewContact> = {
+  async list() {
+    const all = await db.contacts.toArray()
+    // 有跟进日的在前(近的优先),其余按创建时间倒序
+    return all
+      .map(normalizeContact)
+      .sort((a, b) => {
+        const fa = a.nextFollowUp ?? '9999'
+        const fb = b.nextFollowUp ?? '9999'
+        return fa === fb ? (a.createdAt < b.createdAt ? 1 : -1) : fa < fb ? -1 : 1
+      })
+  },
+  async create(input: NewContact) {
+    const c = normalizeContact(input)
+    const item: Contact = { ...c, id: uid(), createdAt: nowIso() }
+    await db.contacts.add(item)
+    return item
+  },
+  async update(id, patch) {
+    await db.contacts.update(id, patch as UpdateSpec<Contact>)
+    const contact = await db.contacts.get(id)
+    if (!contact) throw new Error('联系人不存在')
+    return normalizeContact(contact)
+  },
+  async remove(id) {
+    await db.contacts.delete(id)
+  },
+}
+
+export const localAdapter: DataAdapter = { tasks, notes, links, habits, milestones, dailies, goals, works, memos, expenses, contacts }
 export { LOCAL_USER_ID, db }

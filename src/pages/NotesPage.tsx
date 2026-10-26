@@ -8,6 +8,7 @@ import { Modal } from '@/components/ui/Modal'
 import type { Note } from '@/lib/data/types'
 import { consumeAction } from '@/lib/uiBus'
 import { formatIsoDate } from '@/lib/utils'
+import { toast } from '@/stores/toastStore'
 import { activeNotes, sortNotes, useNoteStore } from '@/stores/noteStore'
 import { NoteCard } from '@/features/notes/NoteCard'
 import { NoteModal } from '@/features/notes/NoteModal'
@@ -39,6 +40,24 @@ export default function NotesPage() {
     window.addEventListener('nexus:action', open)
     return () => window.removeEventListener('nexus:action', open)
   }, [])
+
+  // 笔记双链(Obsidian 式):点击 [[标题]] 跳到对应笔记;不存在则提示
+  useEffect(() => {
+    const onClick = (e: MouseEvent) => {
+      const el = (e.target as HTMLElement | null)?.closest?.('[data-wiki]') as HTMLElement | null
+      if (!el) return
+      e.preventDefault()
+      const title = el.getAttribute('data-wiki') ?? ''
+      if (!title) return
+      const pool = activeNotes(allNotes)
+      const target = pool.find((n) => n.title === title) || pool.find((n) => n.title.includes(title))
+      if (target) openEdit(target)
+      else toast.info('没有找到这篇笔记', `「${title}」还不存在,先创建一条吧`)
+    }
+    document.addEventListener('click', onClick)
+    return () => document.removeEventListener('click', onClick)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [allNotes])
 
   const filtered = useMemo(() => {
     const kw = search.trim().toLowerCase()

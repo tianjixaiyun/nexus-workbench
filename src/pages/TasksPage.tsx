@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { CalendarDays, LayoutGrid, List, Loader2, Plus } from 'lucide-react'
+import { CalendarDays, LayoutGrid, LayoutTemplate, List, Loader2, Plus } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import type { Task, TaskStatus } from '@/lib/data/types'
 import { cn } from '@/lib/utils'
@@ -9,6 +9,7 @@ import { CalendarView } from '@/features/tasks/CalendarView'
 import { KanbanBoard } from '@/features/tasks/KanbanBoard'
 import { TaskList } from '@/features/tasks/TaskList'
 import { TaskModal } from '@/features/tasks/TaskModal'
+import { TemplateModal } from '@/features/tasks/TemplateModal'
 
 type ViewMode = 'list' | 'kanban' | 'calendar'
 
@@ -27,6 +28,7 @@ export default function TasksPage() {
     return saved === 'kanban' || saved === 'calendar' ? saved : 'list'
   })
   const [modalOpen, setModalOpen] = useState(false)
+  const [templateOpen, setTemplateOpen] = useState(false)
   const [editing, setEditing] = useState<Task | null>(null)
   /** 看板某列的 + 按钮:新建时预设状态 */
   const [presetStatus, setPresetStatus] = useState<TaskStatus | null>(null)
@@ -87,10 +89,16 @@ export default function TasksPage() {
             </button>
           ))}
         </div>
-        <Button variant="primary" onClick={() => openCreate()}>
-          <Plus size={15} />
-          新建任务
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" onClick={() => setTemplateOpen(true)}>
+            <LayoutTemplate size={15} />
+            模板
+          </Button>
+          <Button variant="primary" onClick={() => openCreate()}>
+            <Plus size={15} />
+            新建任务
+          </Button>
+        </div>
       </div>
 
       {view === 'list' && <TaskList onEdit={openEdit} />}
@@ -112,6 +120,8 @@ export default function TasksPage() {
         defaultStatus={presetStatus ?? 'todo'}
         defaultDueDate={presetDueDate}
       />
+
+      <TemplateModal open={templateOpen} onClose={() => setTemplateOpen(false)} />
     </div>
   )
 }

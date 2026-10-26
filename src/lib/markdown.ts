@@ -25,6 +25,31 @@ export function renderMarkdown(src: string): string {
       const src = img.getAttribute('src') ?? ''
       if (!isSafeUrl(src) && !/^data:image\//i.test(src)) img.removeAttribute('src')
     })
+    // 笔记双链(Obsidian 式):把文本节点里的 [[标题]] 替换成可点的 wiki 链接,
+    // 跳转由 notes 页的全局委托接管(标题仅作 data 属性,不拼进 HTML,避免注入)
+    const walker = doc.createTreeWalker(doc.body, NodeFilter.SHOW_TEXT)
+    const targets: { node: Text; frag: DocumentFragment }[] = []
+    while (walker.nextNode()) {
+      const node = walker.currentNode as Text
+      const text = node.nodeValue ?? ''
+      if (!text.includes('[[')) continue
+      const frag = doc.createDocumentFragment()
+      const re = /\[\[([^\[\]]+)\]\]/g
+      let idx = 0
+      let m: RegExpExecArray | null
+      while ((m = re.exec(text))) {
+        if (m.index > idx) frag.appendChild(doc.createTextNode(text.slice(idx, m.index)))
+        const a = doc.createElement('a')
+        a.className = 'wiki-link'
+        a.setAttribute('data-wiki', m[1])
+        a.textContent = m[1]
+        frag.appendChild(a)
+        idx = m.index + m[0].length
+      }
+      if (idx < text.length) frag.appendChild(doc.createTextNode(text.slice(idx)))
+      targets.push({ node, frag })
+    }
+    for (const t of targets) t.node.parentNode?.replaceChild(t.frag, t.node)
     return doc.body.innerHTML
   } catch {
     return html

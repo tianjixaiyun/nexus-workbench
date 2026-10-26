@@ -236,3 +236,26 @@ export const INCOME_CATEGORIES = [
   { value: '理财', emoji: '📈' },
   { value: '其他', emoji: '🎁' },
 ] as const
+
+/** 人脉 CRM:联系人卡片(Ultimate Brain 式,含跟进提醒) */
+export interface Contact {
+  id: string
+  name: string
+  /** 公司/组织 */
+  company: string
+  /** 职位/身份 */
+  role: string
+  tags: string[]
+  email: string
+  phone: string
+  /** 备注:怎么认识的、聊过什么 */
+  note: string
+  /** 最近一次联系(YYYY-MM-DD),null=从未记录 */
+  lastContactAt: string | null
+  /** 下次跟进日(YYYY-MM-DD),null=未安排 */
+  nextFollowUp: string | null
+  createdAt: string
+}
+
+export type NewContact = Pick<Contact, 'name'> &
+  Partial<Pick<Contact, 'company' | 'role' | 'tags' | 'email' | 'phone' | 'note' | 'lastContactAt' | 'nextFollowUp'>>

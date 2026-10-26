@@ -29,6 +29,8 @@ const ScrapbookPage = lazy(() => import('@/pages/ScrapbookPage'))
 const AchievementsPage = lazy(() => import('@/pages/AchievementsPage'))
 const MemosPage = lazy(() => import('@/pages/MemosPage'))
 const ExpensePage = lazy(() => import('@/pages/ExpensePage'))
+const ContactsPage = lazy(() => import('@/pages/ContactsPage'))
+const JournalPage = lazy(() => import('@/pages/JournalPage'))
 const AboutPage = lazy(() => import('@/pages/AboutPage'))
 const NotFoundPage = lazy(() => import('@/pages/NotFoundPage'))
 // 海洋首页同样按需:three.js 只在真正访问首页时加载(下潜序幕会盖住加载期)
@@ -94,6 +96,8 @@ export default function App() {
           <Route path="achievements" element={<Suspense fallback={<PageFallback />}><AchievementsPage /></Suspense>} />
           <Route path="memos" element={<Suspense fallback={<PageFallback />}><MemosPage /></Suspense>} />
           <Route path="expense" element={<Suspense fallback={<PageFallback />}><ExpensePage /></Suspense>} />
+          <Route path="contacts" element={<Suspense fallback={<PageFallback />}><ContactsPage /></Suspense>} />
+          <Route path="journal" element={<Suspense fallback={<PageFallback />}><JournalPage /></Suspense>} />
           <Route path="about" element={<Suspense fallback={<PageFallback />}><AboutPage /></Suspense>} />
         </Route>
         {/* 深海 404:未知路由不再静默跳转 */}

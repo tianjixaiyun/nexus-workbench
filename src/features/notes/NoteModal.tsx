@@ -1,5 +1,5 @@
-import { useEffect, useState, type FormEvent } from 'react'
-import { Eye, Pencil, Pin, PinOff } from 'lucide-react'
+import { useEffect, useMemo, useState, type FormEvent } from 'react'
+import { Eye, Link2, Pencil, Pin, PinOff } from 'lucide-react'
 import { Modal } from '@/components/ui/Modal'
 import { Button } from '@/components/ui/Button'
 import { Input, Textarea } from '@/components/ui/Input'
@@ -23,6 +23,12 @@ export function NoteModal({ open, onClose, note }: NoteModalProps) {
   const [pinned, setPinned] = useState(false)
   const [preview, setPreview] = useState(false)
   const { add, update } = useNoteStore()
+  const allNotes = useNoteStore((s) => s.notes)
+  // 反向链接(Obsidian 式):哪些笔记用 [[标题]] 引用了当前笔记
+  const backlinks = useMemo(
+    () => (note ? allNotes.filter((n) => n.id !== note.id && !n.deletedAt && n.content.includes(`[[${note.title}]]`)) : []),
+    [allNotes, note],
+  )
 
   useEffect(() => {
     if (!open) return
@@ -122,6 +128,21 @@ export function NoteModal({ open, onClose, note }: NoteModalProps) {
             />
           )}
         </div>
+        {note && backlinks.length > 0 && (
+          <div className="border-t border-line-1 pt-3">
+            <p className="mb-2 flex items-center gap-1.5 text-xs text-txt-muted">
+              <Link2 size={12} />
+              反向链接({backlinks.length})——这些笔记引用了本篇
+            </p>
+            <div className="flex flex-wrap gap-1.5">
+              {backlinks.map((b) => (
+                <span key={b.id} className="max-w-56 truncate rounded-lg bg-surface-2 px-2 py-1 text-[11px] text-txt-secondary" title={b.content.slice(0, 120)}>
+                  {b.title || '无标题'}
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             {NOTE_COLORS.map((c) => (

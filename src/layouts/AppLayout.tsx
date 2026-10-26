@@ -21,6 +21,7 @@ import {
   Target,
   Timer,
   Trash2,
+  Users,
   Wrench,
   Zap,
 } from 'lucide-react'
@@ -29,7 +30,9 @@ import { isCloudMode } from '@/lib/config'
 import { startRealtime } from '@/lib/data/realtime'
 import { requestAction } from '@/lib/uiBus'
 import { liquidNavigate } from '@/components/fx/overlays'
+import { BookOpen } from 'lucide-react'
 import { useAuthStore } from '@/stores/authStore'
+import { useContactStore } from '@/stores/contactStore'
 import { useDailyStore } from '@/stores/dailyStore'
 import { useGoalStore } from '@/stores/goalStore'
 import { useHabitStore } from '@/stores/habitStore'
@@ -63,6 +66,8 @@ const NAV_ITEMS = [
   { to: '/about', label: '海员证', icon: BadgeCheck },
   { to: '/memos', label: '碎碎念', icon: Cloud },
   { to: '/expense', label: '记账', icon: Wallet },
+  { to: '/contacts', label: '人脉', icon: Users },
+  { to: '/journal', label: '日志', icon: BookOpen },
   { to: '/achievements', label: '成就', icon: Award },
   { to: '/sanctuary', label: '云鲸圣域', icon: Waves },
 ] as const
@@ -80,6 +85,8 @@ const PAGE_TITLES: Record<string, string> = {
   '/about': '海员证',
   '/memos': '碎碎念',
   '/expense': '记账',
+  '/contacts': '人脉 CRM',
+  '/journal': '自动日志',
   '/achievements': '成就',
   '/sanctuary': '云鲸圣域',
 }
@@ -130,6 +137,7 @@ export function AppLayout() {
       useWorkStore.getState(),
       useMemoStore.getState(),
       useExpenseStore.getState(),
+      useContactStore.getState(),
     ] as const
     for (const s of stores) {
       if (!s.loaded) void s.fetch()
@@ -224,6 +232,7 @@ export function AppLayout() {
     useWorkStore.getState().reset()
     useMemoStore.getState().reset()
     useExpenseStore.getState().reset()
+    useContactStore.getState().reset()
     navigate('/login', { replace: true })
   }
 

@@ -231,3 +231,32 @@ begin
   end loop;
 end;
 $$;
+
+-- ---------- 人脉 CRM(联系人 + 跟进提醒) ----------
+create table if not exists contacts (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null default auth.uid() references auth.users (id) on delete cascade,
+  name text not null default '',
+  company text not null default '',
+  role text not null default '',
+  tags jsonb not null default '[]'::jsonb,
+  email text not null default '',
+  phone text not null default '',
+  note text not null default '',
+  last_contact_at date,
+  next_follow_up date,
+  created_at timestamptz not null default now()
+);
+alter table contacts enable row level security;
+create policy "contacts 属于当前用户" on contacts for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
+
+-- 把新表加入实时同步(已加入会抛 duplicate_object,忽略即可)
+do $$
+begin
+  begin
+    alter publication supabase_realtime add table public.contacts;
+  exception when duplicate_object then
+    null;
+  end;
+end;
+$$;

@@ -421,3 +421,16 @@ html.light .glass-card {
     animation: none;
   }
 }
+
+/* ---------- 笔记双链(Obsidian 式 [[链接]]) ---------- */
+.wiki-link {
+  color: var(--color-accent);
+  cursor: pointer;
+  text-decoration: underline dotted rgba(103, 232, 249, 0.5);
+  text-underline-offset: 3px;
+  transition: color 0.15s ease, text-decoration-color 0.15s ease;
+}
+.wiki-link:hover {
+  color: var(--color-neon-cyan);
+  text-decoration-color: var(--color-neon-cyan);
+}

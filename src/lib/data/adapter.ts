@@ -19,6 +19,8 @@ import type {
   NewMemo,
   Expense,
   NewExpense,
+  Contact,
+  NewContact,
 } from './types'
 
 /** 单个实体的通用增删改查接口 */
@@ -45,4 +47,5 @@ export interface DataAdapter {
   works: EntityStore<WorkItem, NewWork>
   memos: EntityStore<Memo, NewMemo>
   expenses: EntityStore<Expense, NewExpense>
+  contacts: EntityStore<Contact, NewContact>
 }

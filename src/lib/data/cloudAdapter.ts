@@ -20,6 +20,8 @@ import type {
   NewMemo,
   Expense,
   NewExpense,
+  Contact,
+  NewContact,
 } from './types'
 import { supabase } from '../config'
 
@@ -284,6 +286,32 @@ const fromGoalRow = (r: Row): Goal => ({
   createdAt: r.created_at as string,
 })
 
+const contactsRow = (c: Partial<Contact>): Row => ({
+  name: c.name ?? '',
+  company: c.company ?? '',
+  role: c.role ?? '',
+  tags: JSON.stringify(c.tags ?? []),
+  email: c.email ?? '',
+  phone: c.phone ?? '',
+  note: c.note ?? '',
+  last_contact_at: c.lastContactAt ?? null,
+  next_follow_up: c.nextFollowUp ?? null,
+})
+
+const fromContactsRow = (r: Row): Contact => ({
+  id: String(r.id),
+  name: (r.name as string) ?? '',
+  company: (r.company as string) ?? '',
+  role: (r.role as string) ?? '',
+  tags: safeParseImages(r.tags as string | string[] | null),
+  email: (r.email as string) ?? '',
+  phone: (r.phone as string) ?? '',
+  note: (r.note as string) ?? '',
+  lastContactAt: (r.last_contact_at as string | null) ?? null,
+  nextFollowUp: (r.next_follow_up as string | null) ?? null,
+  createdAt: (r.created_at as string) ?? '',
+})
+
 export const cloudAdapter: DataAdapter = {
   tasks: makeCloudStore<Task, NewTask>('tasks', 'sort_order', taskRow, fromTaskRow),
   notes: makeCloudStore<Note, NewNote>('notes', 'created_at', noteRow, fromNoteRow),
@@ -295,4 +323,5 @@ export const cloudAdapter: DataAdapter = {
   works: makeCloudStore<WorkItem, NewWork>('works', 'created_at', workRow, fromWorkRow),
   memos: makeCloudStore<Memo, NewMemo>('memos', 'created_at', memoRow, fromMemoRow),
   expenses: makeCloudStore<Expense, NewExpense>('expenses', 'created_at', expenseRow, fromExpenseRow),
+  contacts: makeCloudStore<Contact, NewContact>('contacts', 'created_at', contactsRow, fromContactsRow),
 }
