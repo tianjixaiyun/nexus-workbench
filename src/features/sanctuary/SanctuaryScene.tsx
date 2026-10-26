@@ -9,6 +9,8 @@ import { ScrambleText, Magnetic } from '@/components/fx/micro'
 import { liquidNavigate } from '@/components/fx/overlays'
 import { burst } from '@/components/fx/Burst'
 import { whaleCall } from '@/lib/whaleCall'
+import { IridescentHelix } from '@/components/fx/IridescentHelix'
+import { useReducedMotion } from '@/lib/useReducedMotion'
 
 /**
  * 云鲸圣域 · 电影感展厅
@@ -588,20 +590,21 @@ function CameraRig({ scrollRef, freeLook, lookRef }: {
 }
 
 // ---------- 场景主体 ----------
-function Scene({ scrollRef, freeLook, lookRef, controlsRef }: {
+function Scene({ scrollRef, freeLook, lookRef, controlsRef, reduced }: {
   scrollRef: RefObject<number>
   freeLook: boolean
   lookRef: RefObject<THREE.Vector3>
   controlsRef: RefObject<ComponentRef<typeof OrbitControls> | null>
+  reduced: boolean
 }) {
   return (
     <>
       <color attach="background" args={['#060a16']} />
       <fog attach="fog" args={['#060a16', 24, 58]} />
-      <BreathLights muted={false} />
+      <BreathLights muted={reduced} />
       <Stars radius={80} depth={35} count={2600} factor={3.2} saturation={0} fade speed={0.4} />
 
-      <BreathRhythm muted={false}>
+      <BreathRhythm muted={reduced}>
         <GlassCube />
         <MainIsland />
         <FloatingIsles />
@@ -612,6 +615,9 @@ function Scene({ scrollRef, freeLook, lookRef, controlsRef }: {
 
       {/* 发光轨道环:环绕玻璃立方体巡航 */}
       <OrbitalRings />
+
+      {/* 虹彩螺旋:绕立方体缓旋的青→紫→粉光带(技法移植自 ThreeUI Community,MIT) */}
+      <IridescentHelix radius={6.9} height={9.6} turns={2.1} tubeRadius={0.055} speed={0.16} intensity={0.75} tilt={0.05} muted={reduced} />
 
       {/* 远景星云薄雾 */}
       <mesh position={[-14, 6, -30]} scale={26}>
@@ -639,11 +645,12 @@ function Scene({ scrollRef, freeLook, lookRef, controlsRef }: {
 }
 
 /** Canvas 子树:props 全部稳定,滚动进度走 ref,避免高频重渲染 3D 树 */
-const SceneCanvas = memo(function SceneCanvas({ scrollRef, freeLook, lookRef, controlsRef }: {
+const SceneCanvas = memo(function SceneCanvas({ scrollRef, freeLook, lookRef, controlsRef, reduced }: {
   scrollRef: RefObject<number>
   freeLook: boolean
   lookRef: RefObject<THREE.Vector3>
   controlsRef: RefObject<ComponentRef<typeof OrbitControls> | null>
+  reduced: boolean
 }) {
   return (
     <Canvas
@@ -653,7 +660,7 @@ const SceneCanvas = memo(function SceneCanvas({ scrollRef, freeLook, lookRef, co
       style={{ position: 'absolute', inset: 0 }}
     >
       <CanvasErrorTrap>
-        <Scene scrollRef={scrollRef} freeLook={freeLook} lookRef={lookRef} controlsRef={controlsRef} />
+        <Scene scrollRef={scrollRef} freeLook={freeLook} lookRef={lookRef} controlsRef={controlsRef} reduced={reduced} />
       </CanvasErrorTrap>
     </Canvas>
   )
@@ -748,6 +755,7 @@ export default function SanctuaryScene() {
   const containerRef = useRef<HTMLDivElement>(null)
   const lookRef = useRef(new THREE.Vector3(0, 0.6, 0))
   const controlsRef = useRef<ComponentRef<typeof OrbitControls> | null>(null)
+  const reduced = useReducedMotion()
 
   // 进入自由视角时,让控制器从当前注视点接管,避免镜头跳切
   useEffect(() => {
@@ -772,7 +780,7 @@ export default function SanctuaryScene() {
   const scrollToSection = (i: number) => {
     const el = containerRef.current
     if (!el) return
-    el.scrollTo({ top: i * el.clientHeight, behavior: 'smooth' })
+    el.scrollTo({ top: i * el.clientHeight, behavior: reduced ? 'auto' : 'smooth' })
   }
 
   const sectionAlignClass = (align: (typeof SECTIONS)[number]['align']) =>
@@ -787,7 +795,7 @@ export default function SanctuaryScene() {
     >
       {/* 第 1 层:粘性画布(滚动时保持满屏) */}
       <div className="sticky top-0 w-full" style={{ height: VIEW_H }}>
-        <SceneCanvas scrollRef={scrollRef} freeLook={freeLook} lookRef={lookRef} controlsRef={controlsRef} />
+        <SceneCanvas scrollRef={scrollRef} freeLook={freeLook} lookRef={lookRef} controlsRef={controlsRef} reduced={reduced} />
         {/* 上下暗角,保证文字可读 */}
         <div className="pointer-events-none absolute inset-x-0 top-0 h-28 bg-gradient-to-b from-ink-950/70 to-transparent" />
         <div className="pointer-events-none absolute inset-x-0 bottom-0 h-32 bg-gradient-to-t from-ink-950/70 to-transparent" />

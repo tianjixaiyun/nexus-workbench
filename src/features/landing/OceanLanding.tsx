@@ -7,6 +7,8 @@ import { CanvasErrorTrap } from '@/features/sanctuary/CanvasErrorTrap'
 import { ScrambleText, Magnetic } from '@/components/fx/micro'
 import { BlurText, Marquee } from '@/components/fx/bits'
 import { ParticleField } from '@/components/fx/ParticleField'
+import { IridescentHelix } from '@/components/fx/IridescentHelix'
+import { MarineSnow, BioMotes } from './MarineSnow'
 import { useReducedMotion } from '@/lib/useReducedMotion'
 import { RotatingBadge } from '@/components/fx/RotatingBadge'
 import { CountUp } from '@/components/fx/micro'
@@ -455,6 +457,8 @@ function SeaFloor() {
         <lineSegments geometry={edges}>
           <lineBasicMaterial color="#7fe4ff" transparent opacity={0.85} />
         </lineSegments>
+        {/* 虹彩螺旋:环绕 NEXUS 核心(技法移植自 ThreeUI Community,MIT) */}
+        <IridescentHelix radius={1.32} height={2.5} turns={2} tubeRadius={0.042} speed={0.3} intensity={0.8} muted={false} />
         <GlowSprite position={[0, -0.4, 0]} scale={5.2} color="#5fdcff" opacity={0.5} />
         <pointLight color="#67e8f9" intensity={2.4} distance={13} />
       </group>
@@ -571,6 +575,9 @@ function Scene({ scrollRef, night }: { scrollRef: RefObject<number>; night: bool
       <SeaSurface night={night} />
       <LightShafts scrollRef={scrollRef} />
       <Bubbles />
+      <MarineSnow />
+      <BioMotes color="#a78bfa" count={60} yTop={-16} yBottom={-30} spread={20} opacity={0.6} />
+      <BioMotes color="#67e8f9" count={100} yTop={-24} yBottom={-41} spread={23} opacity={0.85} />
       <FishSchool center={[0, -9.5, -4]} radius={5.5} speed={0.5} y={0} />
       <FishSchool center={[3, -18.5, -6]} radius={4} speed={-0.38} y={0} />
       <PassingWhale />
