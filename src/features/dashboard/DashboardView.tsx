@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { CountUp, TiltCard } from '@/components/fx/micro'
-import { Aurora } from '@/components/fx/bits'
+import { Aurora, BorderBeam } from '@/components/fx/bits'
 import { Link, useNavigate } from 'react-router'
 import {
   CalendarClock,
@@ -84,7 +84,7 @@ function StatCard({ icon: Icon, label, value, tint, progress }: {
 }) {
   return (
     <TiltCard className="h-full rounded-2xl">
-    <Card className="glass-card-hover h-full">
+    <Card spotlight className="glass-card-hover h-full">
       <div className="flex items-center justify-between">
         <div>
           <p className="text-xs text-txt-muted">{label}</p>
@@ -222,8 +222,9 @@ export function DashboardView() {
 
   return (
     <div className="flex flex-col gap-5">
-      {/* 问候 + 每日一句 + 时钟 */}
+      {/* 问候 + 每日一句 + 时钟(Magic UI 式 border beam 光边) */}
       <section className="relative flex flex-wrap items-end justify-between gap-4 overflow-hidden rounded-3xl border border-line-1 bg-surface-1/60 px-6 py-5">
+        <BorderBeam duration={6.5} width={1.5} />
         <Aurora opacity={0.35} />
         <div>
           <p className="text-sm text-txt-muted">
@@ -256,7 +257,7 @@ export function DashboardView() {
 
       {/* 趋势图 + 今日任务 */}
       <section className="grid gap-4 lg:grid-cols-5">
-        <Card className="lg:col-span-3">
+        <Card spotlight className="lg:col-span-3">
           <p className="mb-2 text-sm font-semibold tracking-wide text-txt-secondary">近 7 天完成趋势</p>
           <Chart option={trendOption} className="h-60 w-full" />
         </Card>

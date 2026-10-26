@@ -1,5 +1,4 @@
 import { Suspense, lazy } from 'react'
-import { Loader2 } from 'lucide-react'
 import { BrowserRouter, Route, Routes } from 'react-router'
 import { AppLayout } from '@/layouts/AppLayout'
 import { KonamiEgg } from '@/components/fx/KonamiEgg'
@@ -8,6 +7,7 @@ import { FluidTrail } from '@/components/fx/FluidTrail'
 import { GlobalSkew } from '@/components/fx/motion'
 import { CustomCursor } from '@/components/fx/CustomCursor'
 import { GlobalRipple, LiquidCurtain, DiveIntro } from '@/components/fx/overlays'
+import { SpotlightHover } from '@/components/fx/SpotlightHover'
 import { BurstHost } from '@/components/fx/Burst'
 import { AchievementWatcher } from '@/components/fx/achievements'
 
@@ -40,10 +40,19 @@ function FullscreenFallback() {
 }
 
 function PageFallback() {
+  // shadcn 式骨架屏:布局形状与工作台页面对齐,替代旋转 spinner
   return (
-    <div className="flex h-full min-h-[60vh] items-center justify-center gap-3 text-txt-secondary">
-      <Loader2 className="animate-spin" size={20} />
-      <span className="text-sm">正在加载…</span>
+    <div className="p-6">
+      <div className="nexus-sk h-7 w-44" />
+      <div className="mt-6 grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        {Array.from({ length: 4 }, (_, i) => (
+          <div key={i} className="nexus-sk h-24" />
+        ))}
+      </div>
+      <div className="mt-4 grid gap-4 lg:grid-cols-5">
+        <div className="nexus-sk h-72 lg:col-span-3" />
+        <div className="nexus-sk h-72 lg:col-span-2" />
+      </div>
     </div>
   )
 }
@@ -56,6 +65,7 @@ export default function App() {
       <BurstHost />
       <DiveIntro />
       <CustomCursor />
+      <SpotlightHover />
       <PinGuard />
       <FluidTrail />
       <GlobalSkew />

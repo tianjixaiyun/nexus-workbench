@@ -304,3 +304,78 @@ html.light body::before {
   animation: none;
   mix-blend-mode: normal;
 }
+
+/* ---------- 外网优秀技法移植(Magic UI / Aceternity / Lenis 风格,自研实现) ---------- */
+
+/* Spotlight 卡片(Aceternity 式):光标跟随辉光,坐标由全局指针委托写入 CSS 变量 */
+.spotlight-card {
+  position: relative;
+}
+.spotlight-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  background: radial-gradient(340px circle at var(--spot-x, 50%) var(--spot-y, 50%), rgba(34, 211, 238, 0.14), transparent 62%);
+  opacity: 0;
+  transition: opacity 0.25s ease;
+}
+.spotlight-card:hover::before {
+  opacity: 1;
+}
+.spotlight-card > * {
+  position: relative;
+  z-index: 1;
+}
+html.light .spotlight-card::before {
+  background: radial-gradient(340px circle at var(--spot-x, 50%) var(--spot-y, 50%), rgba(8, 145, 178, 0.12), transparent 62%);
+}
+@media (prefers-reduced-motion: reduce) {
+  .spotlight-card::before {
+    display: none;
+  }
+}
+
+/* 主按钮扫光(Magic UI 式 shine):hover 时一道高光斜扫而过 */
+.btn-shine {
+  position: relative;
+  overflow: hidden;
+}
+.btn-shine::after {
+  content: '';
+  position: absolute;
+  top: -20%;
+  bottom: -20%;
+  left: -75%;
+  width: 45%;
+  background: linear-gradient(105deg, transparent, rgba(255, 255, 255, 0.38), transparent);
+  transform: skewX(-20deg);
+  transition: left 0.55s ease;
+  pointer-events: none;
+}
+.btn-shine:hover::after {
+  left: 125%;
+}
+@media (prefers-reduced-motion: reduce) {
+  .btn-shine::after {
+    display: none;
+  }
+}
+
+/* 骨架屏(shadcn 式 shimmer):路由懒加载期的占位 */
+.nexus-sk {
+  border-radius: 0.75rem;
+  background: linear-gradient(90deg, var(--color-surface-1) 25%, var(--color-surface-3) 37%, var(--color-surface-1) 63%);
+  background-size: 400% 100%;
+  animation: nexus-shimmer 1.3s ease infinite;
+}
+@keyframes nexus-shimmer {
+  0% { background-position: 100% 0; }
+  100% { background-position: -100% 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .nexus-sk {
+    animation: none;
+  }
+}

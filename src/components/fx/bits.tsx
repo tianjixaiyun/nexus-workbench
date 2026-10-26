@@ -45,6 +45,60 @@ export function BlurText({ text, delay = 0, step = 110, className }: {
   )
 }
 
+// ---------- BorderBeam:沿卡片边框巡航的光束(Magic UI 式,自研实现) ----------
+export function BorderBeam({ duration = 5.5, width = 1.5 }: { duration?: number; width?: number }) {
+  return (
+    <span
+      aria-hidden
+      className="nexus-beam"
+      style={{ ['--beam-dur' as string]: duration + 's', ['--beam-w' as string]: width + 'px' }}
+    >
+      <style>{`
+        .nexus-beam {
+          position: absolute;
+          inset: 0;
+          border-radius: inherit;
+          pointer-events: none;
+          padding: var(--beam-w);
+          z-index: 2;
+        }
+        .nexus-beam::before {
+          content: '';
+          display: block;
+          height: 100%;
+          width: 100%;
+          border-radius: inherit;
+          background: conic-gradient(
+            from var(--beam-angle),
+            transparent 0turn,
+            transparent 0.855turn,
+            rgba(34, 211, 238, 0.9) 0.94turn,
+            #eafcff 0.965turn,
+            rgba(139, 92, 246, 0.9) 0.99turn,
+            transparent 1turn
+          );
+          -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+          -webkit-mask-composite: xor;
+          mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+          mask-composite: exclude;
+          animation: nexus-beam-spin var(--beam-dur) linear infinite;
+        }
+        @property --beam-angle {
+          syntax: '<angle>';
+          inherits: false;
+          initial-value: 0deg;
+        }
+        @keyframes nexus-beam-spin {
+          to { --beam-angle: 360deg; }
+        }
+        @media (prefers-reduced-motion: reduce) {
+          .nexus-beam::before { animation: none; opacity: 0.4; }
+        }
+      `}</style>
+    </span>
+  )
+}
+
 // ---------- Marquee:无限横向滚动带 ----------
 export function Marquee({ items, className, reverse = false, speed = 26 }: {
   items: ReactNode[]

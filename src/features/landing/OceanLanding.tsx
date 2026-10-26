@@ -622,6 +622,65 @@ function CapsuleButton({ children, onClick, primary }: { children: ReactNode; on
   )
 }
 
+// ---------- 夜空流星(Magic UI Meteors 技法自研移植:纯 CSS,夜间限定) ----------
+function NightMeteors({ progress }: { progress: number }) {
+  const meteors = useMemo(
+    () =>
+      Array.from({ length: 6 }, (_, i) => ({
+        left: 4 + ((i * 61) % 74),
+        top: 3 + ((i * 37) % 20),
+        delay: (i * 1.9) % 9,
+        dur: 4.5 + ((i * 29) % 10) / 4,
+        len: 90 + ((i * 53) % 100),
+        angle: 22 + ((i * 41) % 20),
+      })),
+    [],
+  )
+  return (
+    // 越潜越深,夜空留在身后
+    <div
+      className="pointer-events-none absolute inset-x-0 top-0 z-[1] h-[48%] overflow-hidden"
+      style={{ opacity: Math.max(0, 1 - progress * 3.2) }}
+      aria-hidden
+    >
+      {meteors.map((m, i) => (
+        <span
+          key={i}
+          className="nexus-meteor"
+          style={{
+            left: m.left + '%',
+            top: m.top + '%',
+            width: m.len,
+            animationDelay: m.delay + 's',
+            animationDuration: m.dur + 's',
+            ['--m-angle' as string]: m.angle + 'deg',
+          }}
+        />
+      ))}
+      <style>{`
+        .nexus-meteor {
+          position: absolute;
+          height: 1.5px;
+          border-radius: 999px;
+          background: linear-gradient(90deg, rgba(200, 235, 255, 0), rgba(200, 235, 255, 0.85) 55%, #ffffff 100%);
+          transform: rotate(var(--m-angle));
+          animation: nexus-meteor-fall linear infinite;
+          opacity: 0;
+        }
+        @keyframes nexus-meteor-fall {
+          0% { transform: translate3d(-6vw, -6vh, 0) rotate(var(--m-angle)); opacity: 0; }
+          6% { opacity: 0.95; }
+          60% { opacity: 0.75; }
+          100% { transform: translate3d(58vw, 46vh, 0) rotate(var(--m-angle)); opacity: 0; }
+        }
+        @media (prefers-reduced-motion: reduce) {
+          .nexus-meteor { display: none; }
+        }
+      `}</style>
+    </div>
+  )
+}
+
 export default function OceanLanding() {
   const navigate = useNavigate()
   // 系统开启「减少动态效果」:静态海面替代 3D 场景与粒子,文字内容不变
@@ -697,6 +756,53 @@ export default function OceanLanding() {
     return () => clearInterval(timer)
   }, [reduced])
 
+  // 丝滑下潜(Lenis 式):接管滚轮,16ms lerp 逼近目标;减动效/触屏/键盘走原生
+  useEffect(() => {
+    if (reduced) return
+    const el = containerRef.current
+    if (!el) return
+    if (window.matchMedia('(pointer: coarse)').matches) return
+    let target = el.scrollTop
+    let current = el.scrollTop
+    let lastSet = el.scrollTop
+    let timer = 0
+    const maxScroll = () => Math.max(0, el.scrollHeight - el.clientHeight)
+    const step = () => {
+      // 拖滚动条/键盘/程序跳转等外部滚动发生时重新同步
+      if (Math.abs(el.scrollTop - lastSet) > 2) {
+        current = target = el.scrollTop
+        lastSet = current
+      }
+      const d = target - current
+      if (Math.abs(d) < 0.5) {
+        el.scrollTop = target
+        current = lastSet = target
+        clearInterval(timer)
+        timer = 0
+        return
+      }
+      current += d * 0.12
+      el.scrollTop = current
+      lastSet = current
+    }
+    const onWheel = (e: WheelEvent) => {
+      if (e.ctrlKey) return // 放大手势不拦截
+      e.preventDefault()
+      const dy = e.deltaMode === 1 ? e.deltaY * 33 : e.deltaY
+      if (!timer) {
+        target = current = el.scrollTop
+        lastSet = el.scrollTop
+      }
+      target = Math.max(0, Math.min(maxScroll(), target + dy))
+      if (!timer) timer = window.setInterval(step, 16)
+    }
+    el.addEventListener('wheel', onWheel, { passive: false })
+    return () => {
+      el.removeEventListener('wheel', onWheel)
+      if (timer) clearInterval(timer)
+    }
+  }, [reduced])
+
   const depth = Math.round(progress * 40)
 
   return (
@@ -723,6 +829,9 @@ export default function OceanLanding() {
         {/* 上下暗角保证文字可读 */}
         <div className="pointer-events-none absolute inset-x-0 top-0 h-24 bg-gradient-to-b from-black/25 to-transparent" />
         <div className="pointer-events-none absolute inset-x-0 bottom-0 h-28 bg-gradient-to-t from-black/35 to-transparent" />
+
+        {/* 夜间限定:海面上空的流星(减动效时不挂载) */}
+        {night && !reduced && <NightMeteors progress={progress} />}
 
         {/* 粒子英雄字:星尘汇聚成 NEXUS,鼠标可推开,随下潜淡出(减少动态效果时停用) */}
         {!reduced && (

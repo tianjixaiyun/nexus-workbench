@@ -9,7 +9,7 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 
 const variants = {
   primary:
-    'neon-gradient-bg text-white font-medium hover:opacity-90 hover:glow-cyan disabled:opacity-50',
+    'neon-gradient-bg btn-shine text-white font-medium hover:opacity-90 hover:glow-cyan disabled:opacity-50',
   ghost: 'text-txt-secondary hover:text-txt-primary hover:bg-surface-2',
   outline: 'border border-line-3 text-txt-secondary hover:border-accent hover:text-txt-primary',
   danger: 'text-danger hover:bg-rose-500/10',
