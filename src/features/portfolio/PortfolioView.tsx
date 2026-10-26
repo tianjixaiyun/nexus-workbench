@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router'
 import { ArrowLeft, ArrowUpRight, Pencil, Plus, Trash2, X } from 'lucide-react'
+import { FigmaSelection } from './portfolioFx'
 import { cn } from '@/lib/utils'
 import { useWorkStore } from '@/stores/workStore'
 import { seedWorks } from '@/lib/sample'
@@ -16,7 +17,102 @@ import { Marquee } from '@/components/fx/bits'
  * 编辑模式:右上角开关,可增删改作品、维护关于文案与联系邮箱(存 localStorage)。
  */
 
+/** 站点 v1.0 上线日(用于页脚运行天数) */
+const SITE_LAUNCH = '2026-10-01'
+
 const SERIF = 'Georgia, "Times New Roman", "Songti SC", "SimSun", serif'
+
+/** Now · 正在折腾(Moenly.Design 式 now page):编辑模式可增删改,存 localStorage */
+const NOW_KEY = 'nexus:portfolio-now'
+const NOW_DEFAULTS = [
+  '🌊 把工作台做成一片会下潜的海',
+  '🧪 给云鲸圣域换新的光',
+  '🤖 教自动日志说人话',
+  '✍️ 持续更新这份作品集',
+]
+
+function NowSection({ editMode }: { editMode: boolean }) {
+  const [items, setItems] = useState<string[]>(() => {
+    try {
+      const raw = localStorage.getItem(NOW_KEY)
+      return raw ? (JSON.parse(raw) as string[]) : NOW_DEFAULTS
+    } catch {
+      return NOW_DEFAULTS
+    }
+  })
+  const [editing, setEditing] = useState(false)
+  const [drafts, setDrafts] = useState<string[]>(NOW_DEFAULTS)
+
+  useEffect(() => {
+    if (editMode) setDrafts(items)
+  }, [editMode, items])
+
+  const persist = (list: string[]) => {
+    const cleaned = list.map((s) => s.trim()).filter(Boolean)
+    setItems(cleaned)
+    try {
+      localStorage.setItem(NOW_KEY, JSON.stringify(cleaned))
+    } catch {
+      // ignore
+    }
+  }
+
+  return (
+    <section className="mx-auto max-w-6xl px-6 pb-24 md:px-10">
+      <div className="flex items-end justify-between gap-4">
+        <p className="font-mono text-xs tracking-[0.35em] text-black/45">NOW · 正在折腾</p>
+        {editMode && (
+          <button
+            onClick={() => {
+              if (editing) persist(drafts)
+              setEditing((v) => !v)
+            }}
+            className="cursor-pointer rounded-full border border-black/20 px-4 py-1.5 text-xs text-black/60 hover:border-black/60"
+          >
+            {editing ? '完成' : '改这份清单'}
+          </button>
+        )}
+      </div>
+      {editMode && editing ? (
+        <div className="mt-5 flex flex-col gap-2.5">
+          {drafts.map((d, i) => (
+            <div key={i} className="flex items-center gap-2">
+              <input
+                value={d}
+                onChange={(e) => setDrafts((v) => v.map((x, j) => (j === i ? e.target.value : x)))}
+                className="flex-1 rounded-xl border border-black/15 bg-white px-4 py-2.5 text-sm outline-none focus:border-black/50"
+                placeholder="最近在折腾什么…"
+              />
+              <button
+                onClick={() => setDrafts((v) => v.filter((_, j) => j !== i))}
+                className="cursor-pointer rounded-lg border border-black/15 px-2.5 py-2 text-xs text-black/50 hover:border-black/50"
+              >
+                删除
+              </button>
+            </div>
+          ))}
+          <button
+            onClick={() => setDrafts((v) => [...v, ''])}
+            className="cursor-pointer self-start rounded-xl border border-dashed border-black/25 px-4 py-2 text-xs text-black/50 hover:border-black/60"
+          >
+            + 加一行
+          </button>
+        </div>
+      ) : (
+        <div className="mt-5 border-t border-black/12">
+          {items.map((t, i) => (
+            <div key={i} className="flex items-baseline gap-5 border-b border-black/12 py-5">
+              <span className="font-mono text-xs text-black/35">{String(i + 1).padStart(2, '0')}</span>
+              <p className="text-xl tracking-wide text-black/80 md:text-2xl" style={{ fontFamily: SERIF }}>
+                {t}
+              </p>
+            </div>
+          ))}
+        </div>
+      )}
+    </section>
+  )
+}
 const LS_ABOUT = 'nexus-portfolio-about'
 const LS_EMAIL = 'nexus-portfolio-email'
 
@@ -498,6 +594,9 @@ export default function PortfolioView() {
         </TiltCard>
       </section>
 
+      {/* Now · 正在折腾(Moenly.Design 式 now page) */}
+      <NowSection editMode={editMode} />
+
       {/* 页脚:超大字 */}
       <footer className="border-t border-black/10 bg-[#14161a] px-6 py-20 text-[#f6f4ef] md:py-28">
         <div className="mx-auto max-w-6xl md:px-4">
@@ -506,7 +605,9 @@ export default function PortfolioView() {
             <br />
             <span className="nexus-footer-word inline-block">WORK</span>
             <br />
-            <span className="nexus-footer-word inline-block italic">TOGETHER.</span>
+            <FigmaSelection delay={500}>
+              <span className="nexus-footer-word inline-block italic">TOGETHER.</span>
+            </FigmaSelection>
           </h2>
           <style>{`
             .nexus-footer-word { transition: color .35s ease, transform .35s cubic-bezier(.2,.9,.3,1.4), text-shadow .35s ease }
@@ -535,7 +636,7 @@ export default function PortfolioView() {
             </div>
           </div>
           <div className="mt-14 flex items-center justify-between border-t border-white/12 pt-6 text-[10px] tracking-[0.25em] text-white/35">
-            <span>© 2026 NEXUS · PERSONAL PORTFOLIO</span>
+            <span>© 2026 NEXUS · PORTFOLIO v1.0 · 已运行 {Math.max(1, Math.round((Date.now() - new Date(SITE_LAUNCH).getTime()) / 86400000))} 天</span>
             <span className="flex items-center gap-1.5"><ArrowLeft size={11} className="rotate-90" /> DESIGNED IN THE DEEP OCEAN</span>
           </div>
         </div>

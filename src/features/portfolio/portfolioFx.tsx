@@ -119,3 +119,77 @@ export function HorizontalGallery({ works, onOpen }: { works: WorkItem[]; onOpen
     </section>
   )
 }
+
+/**
+ * Figma 式文本选中高亮(Moenly.Design 技法移植):
+ * 关键词外面套一个蓝色选中框 + 四角手柄,像设计工具里选中文字的瞬间。
+ * 进入视口时才播「选中」动画,滚动到底部才看到这个彩蛋。
+ */
+export function FigmaSelection({ children, className, delay = 0 }: { children: ReactNode; className?: string; delay?: number }) {
+  const ref = useRef<HTMLSpanElement>(null)
+  const [on, setOn] = useState(false)
+
+  useEffect(() => {
+    const el = ref.current
+    if (!el) return
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      setOn(true)
+      return
+    }
+    const io = new IntersectionObserver(
+      ([e]) => {
+        if (e.isIntersecting) {
+          setOn(true)
+          io.disconnect()
+        }
+      },
+      { threshold: 0.35 },
+    )
+    io.observe(el)
+    return () => io.disconnect()
+  }, [])
+
+  const corners = [
+    'left-0 top-0 -translate-x-1/2 -translate-y-1/2',
+    'right-0 top-0 translate-x-1/2 -translate-y-1/2',
+    'left-0 bottom-0 -translate-x-1/2 translate-y-1/2',
+    'right-0 bottom-0 translate-x-1/2 translate-y-1/2',
+  ]
+
+  return (
+    <span ref={ref} className={`relative inline-block px-2.5 ${className ?? ''}`}>
+      <span className="relative z-[1]">{children}</span>
+      <span
+        aria-hidden
+        className={`nexus-figma-box pointer-events-none absolute -inset-x-2 -inset-y-1${on ? ' nexus-figma-on' : ''}`}
+        style={{ transitionDelay: `${delay}ms` }}
+      />
+      {corners.map((h, i) => (
+        <span
+          key={i}
+          aria-hidden
+          className={`nexus-figma-handle pointer-events-none absolute z-[2] h-1.5 w-1.5 border-[1.5px] border-blue-500 bg-white ${h}`}
+          style={{ transitionDelay: `${delay + 260 + i * 70}ms` }}
+        />
+      ))}
+      <style>{`
+        .nexus-figma-box {
+          background: rgba(37, 99, 235, 0.92);
+          opacity: 0;
+          transform: scale(0.72);
+          transition: opacity .45s cubic-bezier(.2,.7,.3,1), transform .45s cubic-bezier(.2,.7,.3,1);
+        }
+        .nexus-figma-box.nexus-figma-on { opacity: 1; transform: scale(1); }
+        .nexus-figma-handle {
+          opacity: 0;
+          transform: scale(0.4);
+          transition: opacity .3s ease, transform .3s cubic-bezier(.2,.7,.3,1.4);
+        }
+        .nexus-figma-on ~ .nexus-figma-handle { opacity: 1; transform: scale(1); }
+        @media (prefers-reduced-motion: reduce) {
+          .nexus-figma-box, .nexus-figma-handle { transition: none; }
+        }
+      `}</style>
+    </span>
+  )
+}
