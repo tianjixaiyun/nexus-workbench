@@ -11,7 +11,8 @@ export default defineConfig({
     tailwindcss(),
     VitePWA({
       registerType: 'autoUpdate',
-      injectRegister: 'auto',
+      // SW 注册改由 src/main.tsx 应用内完成(带 .catch 降级),不再注入无容错的 registerSW.js
+      injectRegister: 'null',
       includeAssets: ['icon.svg', 'icon-192.png', 'icon-512.png', 'icon-maskable-512.png', 'icon-180.png'],
       manifest: {
         name: 'NEXUS 个人工作台',

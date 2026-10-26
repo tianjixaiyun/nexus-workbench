@@ -1,4 +1,4 @@
-// 临时诊断:R3F Canvas 内容出错时把错误写进标题栏(用完即删)
+// R3F Canvas 出错时的错误边界:保留降级 UI,不再把错误写进标签页标题
 import { Component, type ReactNode } from 'react'
 
 export class CanvasErrorTrap extends Component<{ children: ReactNode }, { err: string | null }> {
@@ -7,7 +7,7 @@ export class CanvasErrorTrap extends Component<{ children: ReactNode }, { err: s
     return { err: error.message }
   }
   componentDidCatch(error: Error) {
-    document.title = `R3F: ${error.message}`.slice(0, 140)
+    console.error('[sanctuary] R3F 场景渲染出错:', error)
   }
   render() {
     if (this.state.err) {
