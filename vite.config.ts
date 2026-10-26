@@ -12,7 +12,7 @@ export default defineConfig({
     VitePWA({
       registerType: 'autoUpdate',
       injectRegister: 'auto',
-      includeAssets: ['icon.svg'],
+      includeAssets: ['icon.svg', 'icon-192.png', 'icon-512.png', 'icon-maskable-512.png', 'icon-180.png'],
       manifest: {
         name: 'NEXUS 个人工作台',
         short_name: 'NEXUS',
@@ -25,8 +25,10 @@ export default defineConfig({
         theme_color: '#05080f',
         background_color: '#05080f',
         icons: [
-          { src: '/icon.svg', sizes: 'any', type: 'image/svg+xml', purpose: 'any' },
-          { src: '/icon.svg', sizes: 'any', type: 'image/svg+xml', purpose: 'maskable' },
+          { src: './icon.svg', sizes: 'any', type: 'image/svg+xml', purpose: 'any' },
+          { src: './icon-192.png', sizes: '192x192', type: 'image/png', purpose: 'any' },
+          { src: './icon-512.png', sizes: '512x512', type: 'image/png', purpose: 'any' },
+          { src: './icon-maskable-512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
         ],
       },
       workbox: {
