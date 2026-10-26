@@ -42,6 +42,7 @@ import { useWorkStore } from '@/stores/workStore'
 import { useMemoStore } from '@/stores/memoStore'
 import { useExpenseStore } from '@/stores/expenseStore'
 import { AssistantPanel } from '@/components/AssistantPanel'
+import { BackupReminder } from '@/components/BackupReminder'
 import { OnboardingModal } from '@/components/OnboardingModal'
 import { CommandPalette } from '@/components/CommandPalette'
 import { QuickCapture, QuickCaptureFab } from '@/components/QuickCapture'
@@ -408,6 +409,9 @@ export function AppLayout() {
             </div>
           )
         })()}
+
+        {/* 本地模式数据备份提醒:超 7 天未导出且库内有数据时,会话内提示一次 */}
+        <BackupReminder />
 
         <main className="min-h-0 flex-1 overflow-y-auto">
           {/* 圣域展厅:全出血电影感布局,自己管理滚动 */}

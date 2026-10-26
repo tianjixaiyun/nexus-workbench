@@ -17,23 +17,44 @@ interface Settings {
   /** 天气城市(未设置则不显示天气卡) */
   weatherCity: WeatherCity | null
   setWeatherCity: (city: WeatherCity | null) => void
+  /** 本地模式:上次导出备份时间(ISO),null=从未导出 */
+  lastExportAt: string | null
+  markExported: () => void
+  /** 首次打开时间(ISO,备份提醒的时间锚点) */
+  firstOpenedAt: string | null
 }
 
 const KEY = 'nexus:settings'
 
-type Stored = Pick<Settings, 'weatherCity' | 'theme'>
+type Stored = Pick<Settings, 'weatherCity' | 'theme' | 'lastExportAt' | 'firstOpenedAt'>
 
 function load(): Stored {
   try {
     const raw = localStorage.getItem(KEY)
-    if (!raw) return { weatherCity: null, theme: 'dark' }
-    const parsed = JSON.parse(raw) as Partial<Stored>
-    return {
+    const parsed = raw ? (JSON.parse(raw) as Partial<Stored>) : {}
+    const stored: Stored = {
       weatherCity: parsed.weatherCity ?? null,
       theme: parsed.theme === 'light' ? 'light' : 'dark',
+      lastExportAt: parsed.lastExportAt ?? null,
+      firstOpenedAt: parsed.firstOpenedAt ?? null,
     }
+    if (!stored.firstOpenedAt) {
+      // 首次打开:记下错点,供「N 天未备份」提醒计算
+      stored.firstOpenedAt = new Date().toISOString()
+      try {
+        localStorage.setItem(KEY, JSON.stringify(stored))
+      } catch {
+        // 忽略:localStorage 不可用时提醒退化为永不触发
+      }
+    }
+    return stored
   } catch {
-    return { weatherCity: null, theme: 'dark' }
+    return {
+      weatherCity: null,
+      theme: 'dark',
+      lastExportAt: null,
+      firstOpenedAt: new Date().toISOString(),
+    }
   }
 }
 
@@ -65,6 +86,13 @@ export const useSettingsStore = create<Settings>((set) => ({
     persist({ weatherCity: city })
     set({ weatherCity: city })
   },
+  lastExportAt: initial.lastExportAt,
+  markExported() {
+    const at = new Date().toISOString()
+    persist({ lastExportAt: at })
+    set({ lastExportAt: at })
+  },
+  firstOpenedAt: initial.firstOpenedAt,
 }))
 
 // 模块加载即应用,避免首帧闪错主题

@@ -1,4 +1,5 @@
 import { isCloudMode } from './config'
+import { useSettingsStore } from '../stores/settingsStore'
 import type {
   WorkItem, Daily, Goal, Habit, LinkItem, Milestone, Note, Task, Memo, Expense } from './data/types'
 import { dataAdapter } from './data'
@@ -58,6 +59,8 @@ export async function exportData(): Promise<void> {
   a.download = `nexus-backup-${new Date().toISOString().slice(0, 10)}.json`
   a.click()
   URL.revokeObjectURL(url)
+  // 记录导出时间,供本地模式的「N 天未备份」提醒判断
+  useSettingsStore.getState().markExported()
 }
 
 function parseBackup(raw: unknown): BackupFile {
