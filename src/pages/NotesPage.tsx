@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Dices, Loader2, Plus, Search, StickyNote } from 'lucide-react'
+import { Dices, Loader2, Palette, Plus, Search, StickyNote, Waypoints } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import { EmptyState } from '@/components/ui/EmptyState'
@@ -12,6 +12,8 @@ import { toast } from '@/stores/toastStore'
 import { activeNotes, sortNotes, useNoteStore } from '@/stores/noteStore'
 import { NoteCard } from '@/features/notes/NoteCard'
 import { NoteModal } from '@/features/notes/NoteModal'
+import { SketchModal } from '@/features/notes/SketchModal'
+import { NoteGraph } from '@/features/notes/NoteGraph'
 import { renderMarkdown } from '@/lib/markdown'
 
 export default function NotesPage() {
@@ -22,6 +24,8 @@ export default function NotesPage() {
   const [editing, setEditing] = useState<Note | null>(null)
   const [deleteId, setDeleteId] = useState<string | null>(null)
   const [random, setRandom] = useState<Note | null>(null)
+  const [sketchOpen, setSketchOpen] = useState(false)
+  const [showGraph, setShowGraph] = useState(false)
 
   // 随机回顾(flomo 式):随机翻出一条旧便签
   const surprise = () => {
@@ -100,6 +104,14 @@ export default function NotesPage() {
           />
         </div>
         <div className="flex-1" />
+        <Button variant="outline" onClick={() => setSketchOpen(true)}>
+          <Palette size={15} />
+          手绘
+        </Button>
+        <Button variant="outline" onClick={() => setShowGraph((v) => !v)}>
+          <Waypoints size={15} />
+          {showGraph ? '卡片视图' : '关系图谱'}
+        </Button>
         <Button variant="outline" onClick={surprise} disabled={notes.length === 0}>
           <Dices size={15} />
           随机回顾
@@ -110,7 +122,9 @@ export default function NotesPage() {
         </Button>
       </div>
 
-      {filtered.length === 0 ? (
+      {showGraph ? (
+        <NoteGraph notes={notes} onOpen={openEdit} />
+      ) : filtered.length === 0 ? (
         <EmptyState
           icon={StickyNote}
           title={search ? '没有匹配的笔记' : '还没有便签'}
@@ -137,6 +151,8 @@ export default function NotesPage() {
       )}
 
       <NoteModal open={modalOpen} onClose={() => setModalOpen(false)} note={editing} />
+
+      <SketchModal open={sketchOpen} onClose={() => setSketchOpen(false)} />
 
       <Modal open={random !== null} onClose={() => setRandom(null)} title="随机回顾" className="max-w-lg">
         {random && (

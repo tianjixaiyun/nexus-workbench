@@ -7,6 +7,7 @@ import { useNavigate } from 'react-router'
 import {
   BarChart3,
   Bot,
+  Calculator,
   Waves,
   CornerDownLeft,
   FileDown,
@@ -24,13 +25,14 @@ import {
 import { cn } from '@/lib/utils'
 import { exportData, importData } from '@/lib/backup'
 import { requestAction } from '@/lib/uiBus'
+import { toast } from '@/stores/toastStore'
 import { activeNotes, useNoteStore } from '@/stores/noteStore'
 import { activeTasks, useTaskStore } from '@/stores/taskStore'
 import { useLinkStore } from '@/stores/linkStore'
 
 interface PaletteItem {
   key: string
-  group: '页面' | '操作' | '任务' | '笔记' | '链接' | '数据'
+  group: '页面' | '操作' | '任务' | '笔记' | '链接' | '数据' | '计算'
   label: string
   hint?: string
   keywords: string
@@ -139,7 +141,32 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
             },
           }))
       : []
-    if (!kw) return items
+    // Raycast 式内联计算器:纯算术表达式直接给出结果,回车复制
+    const calcItem: PaletteItem | null = (() => {
+      const q = query.trim()
+      if (!/^[-+*/%().\d\s]+$/.test(q) || !/\d/.test(q) || !/[-+*/%]/.test(q)) return null
+      try {
+        const val = Function(`"use strict"; return (${q})`)()
+        if (typeof val !== 'number' || !Number.isFinite(val)) return null
+        const value = String(Math.round(val * 1e10) / 1e10)
+        return {
+          key: 'calc',
+          group: '计算' as const,
+          label: `${q} = ${value}`,
+          keywords: '计算 calculator math',
+          icon: <Calculator size={15} />,
+          hint: '回车复制结果',
+          run: () => {
+            void navigator.clipboard?.writeText(value).catch(() => {})
+            toast.success('结果已复制', `${q} = ${value}`)
+            onClose()
+          },
+        } as unknown as PaletteItem
+      } catch {
+        return null
+      }
+    })()
+    if (!kw) return calcItem ? [calcItem, ...items] : items
     // 全文数据搜索(AFFiNE 式):任务/笔记/碎碎念/作品/记账 备注
     if (kw.length >= 1) {
       const data: PaletteItem[] = []
@@ -177,9 +204,9 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
         icon: <BarChart3 size={15} />,
         run: () => { navigate('/expense'); onClose() },
       })))
-      return [...data, ...bangs, ...items.filter((i) => `${i.label} ${i.keywords}`.toLowerCase().includes(kw))]
+      return [...(calcItem ? [calcItem] : []), ...data, ...bangs, ...items.filter((i) => `${i.label} ${i.keywords}`.toLowerCase().includes(kw))]
     }
-    return [...bangs, ...items.filter((i) => `${i.label} ${i.keywords}`.toLowerCase().includes(kw))]
+    return [...(calcItem ? [calcItem] : []), ...bangs, ...items.filter((i) => `${i.label} ${i.keywords}`.toLowerCase().includes(kw))]
   }, [items, query, onClose])
 
   // 关键词变化时重置选中项
@@ -227,8 +254,13 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
     }
   }
 
-  // 分组渲染
-  const groups: PaletteItem['group'][] = ['页面', '操作', '任务', '笔记', '链接']
+  // 分组渲染(动态:全文搜索的「数据」与计算器的「计算」按需出现)
+  const base: PaletteItem['group'][] = ['页面', '操作', '任务', '笔记', '链接']
+  const groups: PaletteItem['group'][] = [
+    ...(results.some((r) => r.group === '计算') ? ['计算' as const] : []),
+    ...base,
+    ...(results.some((r) => r.group === '数据') ? ['数据' as const] : []),
+  ]
 
   return createPortal(
     <div

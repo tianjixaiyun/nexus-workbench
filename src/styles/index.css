@@ -434,3 +434,9 @@ html.light .glass-card {
   color: var(--color-neon-cyan);
   text-decoration-color: var(--color-neon-cyan);
 }
+
+/* 笔记内图片(手绘便签等 dataURL 图)自适应缩放 */
+.md-body img {
+  max-width: 100%;
+  border-radius: 0.5rem;
+}

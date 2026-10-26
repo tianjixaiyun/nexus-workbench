@@ -1,12 +1,12 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
-import { Building2, Mail, Phone, Plus, Search, Trash2, UserCheck, Pencil, CalendarClock } from 'lucide-react'
+import { Building2, CalendarClock, Mail, Pencil, Phone, Plus, Search, Trash2, UserCheck } from 'lucide-react'
 import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { Modal } from '@/components/ui/Modal'
 import { EmptyState } from '@/components/ui/EmptyState'
-import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import { useContactStore } from '@/stores/contactStore'
+import { HoldToConfirmButton } from '@/components/ui/HoldToConfirmButton'
 import type { Contact } from '@/lib/data/types'
 import { cn, todayStr } from '@/lib/utils'
 import { toast } from '@/stores/toastStore'
@@ -145,7 +145,6 @@ export function ContactsView() {
   const [query, setQuery] = useState('')
   const [modalOpen, setModalOpen] = useState(false)
   const [editing, setEditing] = useState<Contact | null>(null)
-  const [deleting, setDeleting] = useState<Contact | null>(null)
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase()
@@ -279,13 +278,19 @@ export function ContactsView() {
                     >
                       <Pencil size={13} />
                     </button>
-                    <button
-                      onClick={() => setDeleting(c)}
-                      className="cursor-pointer rounded-md p-1.5 text-txt-muted transition-colors hover:bg-rose-500/15 hover:text-danger"
-                      title="删除"
+                    {/* 按住确认(Rauno 式):按住删除键充满进度条才执行,松手即取消 */}
+                    <HoldToConfirmButton
+                      holdMs={750}
+                      onConfirm={() => {
+                        void remove(c.id)
+                        toast.info('联系人已删除', c.name)
+                      }}
+                      className="rounded-md p-1.5 text-txt-muted transition-colors hover:bg-rose-500/15 hover:text-danger"
+                      title="按住以删除"
+                      aria-label="按住以删除联系人"
                     >
                       <Trash2 size={13} />
-                    </button>
+                    </HoldToConfirmButton>
                   </span>
                 </div>
               </Card>
@@ -295,21 +300,6 @@ export function ContactsView() {
       )}
 
       <ContactModal open={modalOpen} onClose={() => setModalOpen(false)} editing={editing} />
-
-      <ConfirmDialog
-        open={!!deleting}
-        title="删除联系人"
-        message={`确定删除「${deleting?.name ?? ''}」吗?此操作不可恢复。`}
-        confirmText="删除"
-        onCancel={() => setDeleting(null)}
-        onConfirm={async () => {
-          if (deleting) {
-            await remove(deleting.id)
-            toast.info('联系人已删除', deleting.name)
-          }
-          setDeleting(null)
-        }}
-      />
     </div>
   )
 }
