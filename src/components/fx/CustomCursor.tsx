@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react'
+import { useReducedMotion } from '@/lib/useReducedMotion'
 
 /**
  * 自定义光标(仅精确指针设备,触屏自动关闭):
@@ -6,14 +7,16 @@ import { useEffect, useRef } from 'react'
  * - 悬停按钮/链接:外环放大并填充微光
  * - 悬停带 data-cursor="xxx" 的元素:环内显示提示文字(如作品的 VIEW)
  * - 按下时收缩,离开窗口隐藏;输入框保留原生文本光标
+ * - 系统「减少动态效果」时整体停用,保留原生光标
  */
 export function CustomCursor() {
   const dotRef = useRef<HTMLDivElement>(null)
   const ringRef = useRef<HTMLDivElement>(null)
   const labelRef = useRef<HTMLSpanElement>(null)
+  const reduced = useReducedMotion()
 
   useEffect(() => {
-    if (!window.matchMedia('(pointer: fine)').matches) return
+    if (reduced || !window.matchMedia('(pointer: fine)').matches) return
 
     const style = document.createElement('style')
     style.textContent = `
@@ -95,7 +98,7 @@ export function CustomCursor() {
       document.body.classList.remove('nexus-cursor')
       style.remove()
     }
-  }, [])
+  }, [reduced])
 
   return (
     <>

@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react'
+import { useReducedMotion } from '@/lib/useReducedMotion'
 
 /**
  * 滚动速度歪斜(Codrops/Lenis 圈经典):
@@ -6,11 +7,17 @@ import { useEffect, useRef } from 'react'
  * 各处用 style={{ transform: 'skewY(var(--nexus-skew))' }} 接力,
  * 快滚时内容微微倾斜、停手回正——页面像有物理质感。
  * 轮询而非 scroll 事件:部分合成环境不向监听器派发 scroll。
+ * 系统「减少动态效果」时停止轮询并把变量归零。
  */
 export function GlobalSkew() {
   const state = useRef({ lastY: 0, skew: 0, target: 0 })
+  const reduced = useReducedMotion()
 
   useEffect(() => {
+    if (reduced) {
+      document.documentElement.style.setProperty('--nexus-skew', '0deg')
+      return
+    }
     const s = state.current
     s.lastY = window.scrollY
 
@@ -29,7 +36,7 @@ export function GlobalSkew() {
     }, 16)
 
     return () => clearInterval(timer)
-  }, [])
+  }, [reduced])
 
   return null
 }

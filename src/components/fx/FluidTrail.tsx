@@ -1,15 +1,18 @@
 import { useEffect, useRef } from 'react'
+import { useReducedMotion } from '@/lib/useReducedMotion'
 
 /**
  * 鼠标流体丝带拖尾(致敬 3D 动效站的鼠标跟随):
  * 沿鼠标轨迹绘制青→紫→粉渐变发光丝带,头粗尾细、透明度衰减;
  * 快速划动时沿途散落微小粒子。interval 驱动,不依赖 rAF。
+ * 系统「减少动态效果」时停用。
  */
 export function FluidTrail() {
   const canvasRef = useRef<HTMLCanvasElement>(null)
+  const reduced = useReducedMotion()
 
   useEffect(() => {
-    if (!window.matchMedia('(pointer: fine)').matches) return
+    if (reduced || !window.matchMedia('(pointer: fine)').matches) return
     const canvas = canvasRef.current
     if (!canvas) return
     const ctx = canvas.getContext('2d')!
@@ -128,10 +131,11 @@ export function FluidTrail() {
 
     return () => {
       clearInterval(timer)
+      ctx.clearRect(0, 0, w, h)
       window.removeEventListener('resize', resize)
       window.removeEventListener('pointermove', onMove)
     }
-  }, [])
+  }, [reduced])
 
   return <canvas ref={canvasRef} className="pointer-events-none fixed inset-0 z-[9989]" style={{ opacity: 0.65 }} aria-hidden />
 }

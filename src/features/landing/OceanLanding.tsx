@@ -7,6 +7,7 @@ import { CanvasErrorTrap } from '@/features/sanctuary/CanvasErrorTrap'
 import { ScrambleText, Magnetic } from '@/components/fx/micro'
 import { BlurText, Marquee } from '@/components/fx/bits'
 import { ParticleField } from '@/components/fx/ParticleField'
+import { useReducedMotion } from '@/lib/useReducedMotion'
 import { RotatingBadge } from '@/components/fx/RotatingBadge'
 import { CountUp } from '@/components/fx/micro'
 import { useTaskStore } from '@/stores/taskStore'
@@ -616,6 +617,8 @@ function CapsuleButton({ children, onClick, primary }: { children: ReactNode; on
 
 export default function OceanLanding() {
   const navigate = useNavigate()
+  // 系统开启「减少动态效果」:静态海面替代 3D 场景与粒子,文字内容不变
+  const reduced = useReducedMotion()
   // 数字年报:真实数据讲这片海的故事
   const tasks = useTaskStore((st) => st.tasks)
   const memos = useMemoStore((st) => st.memos)
@@ -669,11 +672,15 @@ export default function OceanLanding() {
   }
 
   const scrollTo = (top: number) => {
-    containerRef.current?.scrollTo({ top, behavior: 'smooth' })
+    containerRef.current?.scrollTo({ top, behavior: reduced ? 'auto' : 'smooth' })
   }
 
-  // 歪斜惯性:每帧向目标推进、目标自身衰减,停手回正
+  // 歪斜惯性:每帧向目标推进、目标自身衰减,停手回正(减少动态效果时静止)
   useEffect(() => {
+    if (reduced) {
+      if (skewRef.current) skewRef.current.style.transform = 'skewY(0deg)'
+      return
+    }
     const timer = window.setInterval(() => {
       const sk = skewState.current
       sk.skew += (sk.target - sk.skew) * 0.14
@@ -681,7 +688,7 @@ export default function OceanLanding() {
       if (skewRef.current) skewRef.current.style.transform = `skewY(${sk.skew.toFixed(3)}deg)`
     }, 16)
     return () => clearInterval(timer)
-  }, [])
+  }, [reduced])
 
   const depth = Math.round(progress * 40)
 
@@ -692,25 +699,38 @@ export default function OceanLanding() {
       className="relative h-dvh overflow-y-auto overflow-x-hidden"
       style={{ scrollbarWidth: 'none', background: night ? '#0d1c31' : '#9fd3ef' }}
     >
-      {/* 粘性画布 */}
+      {/* 粘性画布:减少动态效果时用静态渐变海面替代 three.js 场景 */}
       <div className="sticky top-0 h-dvh w-full">
-        <SceneCanvas scrollRef={scrollRef} night={night} />
+        {reduced ? (
+          <div
+            className="absolute inset-0"
+            style={{
+              background: night
+                ? 'linear-gradient(180deg, #0a1220 0%, #0d1c31 45%, #060b14 100%)'
+                : 'linear-gradient(180deg, #9fd3ef 0%, #5f9fd0 55%, #123a5e 100%)',
+            }}
+          />
+        ) : (
+          <SceneCanvas scrollRef={scrollRef} night={night} />
+        )}
         {/* 上下暗角保证文字可读 */}
         <div className="pointer-events-none absolute inset-x-0 top-0 h-24 bg-gradient-to-b from-black/25 to-transparent" />
         <div className="pointer-events-none absolute inset-x-0 bottom-0 h-28 bg-gradient-to-t from-black/35 to-transparent" />
 
-        {/* 粒子英雄字:星尘汇聚成 NEXUS,鼠标可推开,随下潜淡出 */}
-        <div
-          className="pointer-events-none absolute inset-x-0 top-[8%] z-[2] h-[40%]"
-          style={{ opacity: Math.max(0, 1 - progress * 4.5) }}
-        >
-          <ParticleField
-            text="NEXUS"
-            className="h-full w-full"
-            density={typeof window !== 'undefined' && window.innerWidth < 768 ? 0.55 : 1}
-            opacity={night ? 0.95 : 0.8}
-          />
-        </div>
+        {/* 粒子英雄字:星尘汇聚成 NEXUS,鼠标可推开,随下潜淡出(减少动态效果时停用) */}
+        {!reduced && (
+          <div
+            className="pointer-events-none absolute inset-x-0 top-[8%] z-[2] h-[40%]"
+            style={{ opacity: Math.max(0, 1 - progress * 4.5) }}
+          >
+            <ParticleField
+              text="NEXUS"
+              className="h-full w-full"
+              density={typeof window !== 'undefined' && window.innerWidth < 768 ? 0.55 : 1}
+              opacity={night ? 0.95 : 0.8}
+            />
+          </div>
+        )}
 
         {/* 顶部导航 */}
         <div className="pointer-events-none absolute inset-x-0 top-0 flex items-center justify-between px-6 py-5 md:px-10">
