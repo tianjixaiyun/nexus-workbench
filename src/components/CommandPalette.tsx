@@ -82,7 +82,7 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
       { key: 'a-task', group: '操作', label: '新建任务', keywords: 'new add create 新建 添加 任务', icon: <Plus size={15} />, run: () => { requestAction('new-task'); navigate('/tasks'); onClose() } },
       { key: 'a-note', group: '操作', label: '新建便签', keywords: 'new add create 新建 添加 便签 笔记', icon: <Plus size={15} />, run: () => { requestAction('new-note'); navigate('/notes'); onClose() } },
       { key: 'a-assistant', group: '操作', label: '问问助手(基于你的数据)', keywords: 'ai assistant 助手 问问 智能 帮我分析', icon: <Bot size={15} />, run: () => { onClose(); window.dispatchEvent(new CustomEvent('nexus:assistant')) } },
-      { key: 'a-export', group: '操作', label: '导出数据备份 (JSON)', keywords: 'export backup 导出 备份 下载', icon: <FileDown size={15} />, run: async () => { await exportData(); setNotice('备份已下载'); } },
+      { key: 'a-export', group: '操作', label: '导出数据备份 (JSON)', keywords: 'export backup 导出 备份 下载', icon: <FileDown size={15} />, run: async () => { await exportData(); } },
       { key: 'a-import', group: '操作', label: '导入数据备份', keywords: 'import restore 导入 恢复', icon: <FileUp size={15} />, run: () => { fileInputRef.current?.click() } },
     ]
     const taskItems: PaletteItem[] = activeTasks(tasks).map((t) => ({
@@ -219,8 +219,8 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
 
   const handleImportFile = async (file: File) => {
     try {
-      const res = await importData(file)
-      setNotice(`导入成功:${res.counts},页面将刷新…`)
+      await importData(file)
+      setNotice(`导入完成,页面将刷新…`)
       setTimeout(() => window.location.reload(), 1200)
     } catch (err) {
       setNotice(err instanceof Error ? err.message : '导入失败')

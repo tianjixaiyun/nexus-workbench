@@ -833,6 +833,17 @@ export default function OceanLanding() {
         {/* 夜间限定:海面上空的流星(减动效时不挂载) */}
         {night && !reduced && <NightMeteors progress={progress} />}
 
+        {/* 噪点质感(X 经典氛围,静态不参与动画) */}
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-0 z-[3] opacity-[0.05] mix-blend-overlay"
+          style={{
+            backgroundImage:
+              "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E\")",
+            backgroundSize: '180px 180px',
+          }}
+        />
+
         {/* 粒子英雄字:星尘汇聚成 NEXUS,鼠标可推开,随下潜淡出(减少动态效果时停用) */}
         {!reduced && (
           <div
@@ -912,8 +923,8 @@ export default function OceanLanding() {
         </div>
       </div>
 
-      {/* 下潜分幕(整层随滚动速度轻微歪斜) */}
-      <div ref={skewRef} className="relative z-10 will-change-transform" style={{ marginTop: 'calc(-100dvh)' }}>
+      {/* 下潜分幕(整层随滚动速度轻微歪斜;分区进入视口时 CSS 原生 scroll-driven reveal) */}
+      <div ref={skewRef} className="ocean-acts relative z-10 will-change-transform" style={{ marginTop: 'calc(-100dvh)' }}>
         {/* 第一幕:海面之上 */}
         <section className="flex h-dvh items-center justify-center px-8 text-center">
           <div className="pointer-events-none max-w-3xl">

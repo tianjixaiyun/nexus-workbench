@@ -223,7 +223,7 @@ export function DashboardView() {
   return (
     <div className="flex flex-col gap-5">
       {/* 问候 + 每日一句 + 时钟(Magic UI 式 border beam 光边) */}
-      <section className="relative flex flex-wrap items-end justify-between gap-4 overflow-hidden rounded-3xl border border-line-1 bg-surface-1/60 px-6 py-5">
+      <section className="nexus-stagger-in relative flex flex-wrap items-end justify-between gap-4 overflow-hidden rounded-3xl border border-line-1 bg-surface-1/60 px-6 py-5" style={{ animationDelay: '0ms' }}>
         <BorderBeam duration={6.5} width={1.5} />
         <Aurora opacity={0.35} />
         <div>
@@ -241,7 +241,7 @@ export function DashboardView() {
       </section>
 
       {/* 统计卡片 */}
-      <section className="grid grid-cols-2 gap-4 md:grid-cols-3 xl:grid-cols-5">
+      <section className="nexus-stagger-in grid grid-cols-2 gap-4 md:grid-cols-3 xl:grid-cols-5" style={{ animationDelay: '60ms' }}>
         <StatCard icon={ListChecks} label="待办任务" value={stats.todo + stats.doing} tint="bg-accent-soft text-accent" />
         <StatCard icon={CalendarClock} label="今日截止" value={stats.dueToday} tint="bg-amber-400/10 text-warn" />
         <StatCard
@@ -256,7 +256,7 @@ export function DashboardView() {
       </section>
 
       {/* 趋势图 + 今日任务 */}
-      <section className="grid gap-4 lg:grid-cols-5">
+      <section className="nexus-stagger-in grid gap-4 lg:grid-cols-5" style={{ animationDelay: '120ms' }}>
         <Card spotlight className="lg:col-span-3">
           <p className="mb-2 text-sm font-semibold tracking-wide text-txt-secondary">近 7 天完成趋势</p>
           <Chart option={trendOption} className="h-60 w-full" />
@@ -299,7 +299,7 @@ export function DashboardView() {
       <GoalsCard />
 
       {/* 习惯打卡 + 天气 + 倒数日 */}
-      <section className="grid gap-4 lg:grid-cols-6">
+      <section className="nexus-stagger-in grid gap-4 lg:grid-cols-6" style={{ animationDelay: '180ms' }}>
         <Card className="lg:col-span-2">
           <div className="mb-3 flex items-center justify-between">
             <p className="text-sm font-semibold tracking-wide text-txt-secondary">今日打卡</p>
@@ -385,7 +385,7 @@ export function DashboardView() {
       </section>
 
       {/* 快捷入口 + 最近便签 + 迷你日历 */}
-      <section className="grid gap-4 lg:grid-cols-6">
+      <section className="nexus-stagger-in grid gap-4 lg:grid-cols-6" style={{ animationDelay: '240ms' }}>
         <Card className="lg:col-span-2">
           <div className="mb-3 flex items-center justify-between">
             <p className="text-sm font-semibold tracking-wide text-txt-secondary">快捷入口</p>

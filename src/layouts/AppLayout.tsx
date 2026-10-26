@@ -47,6 +47,7 @@ import { OnboardingModal } from '@/components/OnboardingModal'
 import { CommandPalette } from '@/components/CommandPalette'
 import { QuickCapture, QuickCaptureFab } from '@/components/QuickCapture'
 import { ShortcutsHelp } from '@/components/ShortcutsHelp'
+import { Toaster } from '@/components/Toaster'
 
 const NAV_ITEMS = [
   { to: '/home', label: '工作台', icon: LayoutDashboard },
@@ -435,6 +436,7 @@ export function AppLayout() {
         onNavigate={(to) => navigate(to)}
       />
       <ShortcutsHelp open={helpOpen} onClose={() => setHelpOpen(false)} />
+      <Toaster />
     </div>
   )
 }

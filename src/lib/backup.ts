@@ -1,5 +1,6 @@
 import { isCloudMode } from './config'
 import { useSettingsStore } from '../stores/settingsStore'
+import { toast } from '../stores/toastStore'
 import type {
   WorkItem, Daily, Goal, Habit, LinkItem, Milestone, Note, Task, Memo, Expense } from './data/types'
 import { dataAdapter } from './data'
@@ -61,6 +62,7 @@ export async function exportData(): Promise<void> {
   URL.revokeObjectURL(url)
   // 记录导出时间,供本地模式的「N 天未备份」提醒判断
   useSettingsStore.getState().markExported()
+  toast.success('备份已导出', 'JSON 文件已保存到下载目录')
 }
 
 function parseBackup(raw: unknown): BackupFile {
@@ -119,7 +121,8 @@ export async function importData(file: File): Promise<{ counts: string }> {
     for (const e of backup.expenses ?? []) await dataAdapter.expenses.create({ kind: e.kind, amount: e.amount, category: e.category, note: e.note, date: e.date })
   }
 
-  return {
-    counts: `任务 ${n(backup.tasks)} · 笔记 ${n(backup.notes)} · 链接 ${n(backup.links)} · 习惯 ${n(backup.habits)} · 倒数日 ${n(backup.milestones)} · 作品 ${n(backup.works ?? [])} · 碎碎念 ${n(backup.memos ?? [])} · 记账 ${n(backup.expenses ?? [])}`,
-  }
+  const counts = `任务 ${n(backup.tasks)} · 笔记 ${n(backup.notes)} · 链接 ${n(backup.links)} · 习惯 ${n(backup.habits)} · 倒数日 ${n(backup.milestones)} · 作品 ${n(backup.works ?? [])} · 碎碎念 ${n(backup.memos ?? [])} · 记账 ${n(backup.expenses ?? [])}`
+  toast.success('导入成功', `${counts} —— 页面即将刷新`)
+
+  return { counts }
 }
