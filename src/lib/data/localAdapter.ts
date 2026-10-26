@@ -397,15 +397,16 @@ const goals: EntityStore<Goal, NewGoal> = {
   },
 }
 
+// v5:新增 works(作品集)表
+// 版本声明必须升序(Dexie 约定):v5 在 v6 之前,避免未来新增版本时升级错乱
+db.version(5).stores({
+  works: 'id, createdAt',
+})
+
 // v6:新增 memos(碎碎念)/ expenses(记账)表
 db.version(6).stores({
   memos: 'id, createdAt, pinned',
   expenses: 'id, date, kind',
-})
-
-// v5:新增 works(作品集)表
-db.version(5).stores({
-  works: 'id, createdAt',
 })
 
 export const localAdapter: DataAdapter = { tasks, notes, links, habits, milestones, dailies, goals, works, memos, expenses }
