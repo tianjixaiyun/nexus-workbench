@@ -30,13 +30,13 @@ export const useDailyStore = create<DailyState>((set, get) => ({
     }
   },
 
-  async upsert(date, mood, note = '') {
+  async upsert(date, mood, note) {
     const existing = get().dailies.find((d) => d.date === date)
     if (existing) {
-      const updated = await dataAdapter.dailies.update(existing.id, { mood, note })
+      const updated = await dataAdapter.dailies.update(existing.id, note === undefined ? { mood } : { mood, note })
       set({ dailies: get().dailies.map((d) => (d.id === updated.id ? updated : d)) })
     } else {
-      const created = await dataAdapter.dailies.create({ date, mood, note })
+      const created = await dataAdapter.dailies.create({ date, mood, note: note ?? '' })
       set({ dailies: [...get().dailies, created] })
     }
   },

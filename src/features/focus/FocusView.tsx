@@ -1,145 +1,43 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Maximize2, Minimize2, Pause, Play, RotateCcw, Settings2, SkipForward, Timer as TimerIcon, Volume2, VolumeX } from 'lucide-react'
 import { Card } from '@/components/ui/Card'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { Select } from '@/components/ui/Input'
-import { cn, todayStr } from '@/lib/utils'
-import { recordSession, recentSessions, todaySessions } from '@/lib/pomodoro'
-import { celebrate } from '@/components/fx/Burst'
-import { checkAchievementsNow } from '@/components/fx/achievements'
+import { cn } from '@/lib/utils'
+import { recentSessions, todayFocusMinutes, todaySessions } from '@/lib/pomodoro'
+import { FOCUS_MODE_LABELS, formatFocusTime, remainingSeconds, type FocusConfig, type FocusMode } from '@/lib/focusTimer'
 import { activeTasks, useTaskStore } from '@/stores/taskStore'
+import { useAuthStore } from '@/stores/authStore'
+import { useFocusStore } from '@/stores/focusStore'
 import { NoisePlayer, type NoiseKind } from '@/lib/noise'
 import { useSettingsStore } from '@/stores/settingsStore'
-
-type Mode = 'work' | 'short' | 'long'
-
-interface FocusConfig {
-  work: number
-  short: number
-  long: number
-  dailyGoal: number
-}
-
-const DEFAULT_CFG: FocusConfig = { work: 25, short: 5, long: 15, dailyGoal: 8 }
-
-function loadCfg(): FocusConfig {
-  try {
-    const c = JSON.parse(localStorage.getItem('nexus-focus-config') ?? 'null') as Partial<FocusConfig> | null
-    if (c && c.work && c.short && c.long && c.dailyGoal) return c as FocusConfig
-  } catch { /* 默认 */ }
-  return DEFAULT_CFG
-}
 
 const RADIUS = 130
 const CIRCUMFERENCE = 2 * Math.PI * RADIUS
 
-function fmt(seconds: number): string {
-  const m = Math.floor(seconds / 60)
-  const s = seconds % 60
-  return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`
-}
-
 export function FocusView() {
   const tasks = useTaskStore((s) => s.tasks)
-  const [mode, setMode] = useState<Mode>('work')
-  const [focusCfg, setFocusCfg] = useState<FocusConfig>(loadCfg)
+  const { timer, now, busy } = useFocusStore()
+  const { mode, running, taskId, config: focusCfg } = timer
+  const remaining = remainingSeconds(timer, now)
+  const total = timer.totalSeconds
+  const sessions = todaySessions()
   const [cfgOpen, setCfgOpen] = useState(false)
   const [cfgDraft, setCfgDraft] = useState<FocusConfig>(focusCfg)
-  const MODES = useMemo(() => [
-    { value: 'work' as const, label: '专注', minutes: focusCfg.work },
-    { value: 'short' as const, label: '短休', minutes: focusCfg.short },
-    { value: 'long' as const, label: '长休', minutes: focusCfg.long },
-  ], [focusCfg])
-  const [remaining, setRemaining] = useState(MODES[0].minutes * 60)
-  const [running, setRunning] = useState(false)
-  const [taskId, setTaskId] = useState('')
-  const [sessions, setSessions] = useState(() => todaySessions())
-  const endAtRef = useRef<number | null>(null)
-
+  const MODES = useMemo(() => (['work', 'short', 'long'] as const).map((value) => ({ value, label: FOCUS_MODE_LABELS[value], minutes: focusCfg[value] })), [focusCfg])
   const light = useSettingsStore((s) => s.theme) === 'light'
-  const total = MODES.find((m) => m.value === mode)!.minutes * 60
   const focusableTasks = useMemo(() => activeTasks(tasks).filter((t) => t.status !== 'done'), [tasks])
-  const selectedTask = focusableTasks.find((t) => t.id === taskId)
-
-  const switchMode = useCallback((next: Mode) => {
-    setMode(next)
-    setRemaining(MODES.find((m) => m.value === next)!.minutes * 60)
-    setRunning(false)
-    endAtRef.current = null
-  }, [])
-
-  const complete = useCallback(() => {
-    setRunning(false)
-    endAtRef.current = null
-    try {
-      if ('Notification' in window && Notification.permission === 'granted') {
-        const label = MODES.find((m) => m.value === mode)!.label
-        new Notification(mode === 'work' ? '专注完成,休息一下 🍅' : `休息结束,继续${label}!`)
-      }
-    } catch {
-      // 通知不可用时忽略
-    }
-    if (mode === 'work') {
-      recordSession(todayStr())
-      setSessions(todaySessions())
-      celebrate()
-      checkAchievementsNow()
-      // 关联了任务:给该任务累加一个番茄的专注时长(Toggl 式统计)
-      if (taskId) void useTaskStore.getState().addFocusMinutes(taskId, 25)
-      switchMode('short')
-    } else {
-      switchMode('work')
-    }
-  }, [mode, switchMode, taskId])
-
-  // 计时心跳:用真实时间戳计算剩余,后台标签页也不会漂移
-  useEffect(() => {
-    if (!running) return
-    if (endAtRef.current === null) endAtRef.current = Date.now() + remaining * 1000
-    const tick = () => {
-      const left = Math.max(0, Math.round(((endAtRef.current ?? 0) - Date.now()) / 1000))
-      setRemaining(left)
-      if (left <= 0) complete()
-    }
-    tick()
-    const timer = setInterval(tick, 250)
-    return () => clearInterval(timer)
-    // remaining 变化不重启 interval,只在 running/mode 变化时重建
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [running, mode, complete])
-
-  // 计时时把剩余时间写进标签页标题
-  useEffect(() => {
-    if (running) {
-      document.title = `${fmt(remaining)} · ${MODES.find((m) => m.value === mode)!.label} — NEXUS`
-    } else {
-      document.title = 'NEXUS · 工作台'
-    }
-    return () => {
-      document.title = 'NEXUS · 工作台'
-    }
-  }, [running, remaining, mode])
-
+  const selectedTask = tasks.find((t) => t.id === taskId)
+  const switchMode = (next: FocusMode) => { void useFocusStore.getState().switchMode(next) }
   const toggleRun = () => {
-    if (running) {
-      // 暂停:记录当前剩余
-      endAtRef.current = null
-      setRunning(false)
-    } else {
-      if ('Notification' in window && Notification.permission === 'default') {
-        void Notification.requestPermission().catch(() => undefined)
-      }
-      endAtRef.current = Date.now() + remaining * 1000
-      setRunning(true)
+    if (busy) return
+    if (!running && 'Notification' in window && Notification.permission === 'default') {
+      void Notification.requestPermission().catch(() => undefined)
     }
+    void useFocusStore.getState().toggle()
   }
-
-  const reset = () => {
-    endAtRef.current = null
-    setRunning(false)
-    setRemaining(total)
-  }
-
+  const reset = () => { void useFocusStore.getState().reset() }
+  const skip = () => { void useFocusStore.getState().skip() }
   // 专注白噪音(WebAudio 合成,Forest 氛围)
   const playerRef = useRef<NoisePlayer | null>(null)
   const [noiseOn, setNoiseOn] = useState(false)
@@ -173,26 +71,18 @@ export function FocusView() {
   }, [])
   const toggleFullscreen = () => {
     try {
-      if (document.fullscreenElement) void document.exitFullscreen()
-      else void document.documentElement.requestFullscreen()
+      if (document.fullscreenElement) void document.exitFullscreen().catch(() => undefined)
+      else void document.documentElement.requestFullscreen().catch(() => undefined)
     } catch {
       // 浏览器不支持时忽略
     }
   }
 
   const progress = 1 - remaining / total
-  const applyCfg = () => {
-    const clamp = (n: number) => Math.max(1, Math.min(180, Math.round(n)) || 1)
-    const next = { work: clamp(cfgDraft.work), short: clamp(cfgDraft.short), long: clamp(cfgDraft.long), dailyGoal: Math.max(1, Math.min(50, Math.round(cfgDraft.dailyGoal)) || 1) }
-    setFocusCfg(next)
-    localStorage.setItem('nexus-focus-config', JSON.stringify(next))
-    if (!running) {
-      const m = next[mode]
-      setRemaining(m * 60)
-    }
+  const applyCfg = async () => {
+    await useFocusStore.getState().configure(cfgDraft)
     setCfgOpen(false)
   }
-
   const ringColor = mode === 'work' ? (light ? '#0891b2' : '#22d3ee') : light ? '#059669' : '#34d399'
   const week = recentSessions(7)
   const weekMax = Math.max(1, ...week.map((d) => d.count))
@@ -214,6 +104,7 @@ export function FocusView() {
             </button>
           ))}
         </div>
+        {timer.sessionId && <p className="text-[11px] text-txt-muted">本次 {total / 60} 分钟，时长设置从下一次开始生效；重置或跳过会取消本次。</p>}
         {cfgOpen && (
           <div className="flex flex-wrap items-center gap-2 rounded-xl border border-line-2 bg-surface-1 px-4 py-3 text-xs">
             {([['work', '专注'], ['short', '短休'], ['long', '长休']] as const).map(([k, label]) => (
@@ -236,14 +127,14 @@ export function FocusView() {
                 className="w-14 rounded-md border border-line-2 bg-surface-2 px-2 py-1 font-mono outline-none focus:border-accent"
               /> 个
             </label>
-            <button onClick={applyCfg} className="cursor-pointer rounded-lg bg-accent px-3 py-1.5 font-medium text-white">保存</button>
+            <button disabled={busy} onClick={() => void applyCfg()} className="cursor-pointer rounded-lg bg-accent px-3 py-1.5 font-medium text-white">保存</button>
           </div>
         )}
-        <div className="flex items-center gap-3 text-xs text-txt-muted">
+        <div className="flex flex-wrap items-center gap-3 text-xs text-txt-muted">
           <span className="flex items-center gap-1.5">
             <TimerIcon size={14} />
             今天已完成 <span className="font-mono font-bold text-accent">{sessions}</span>
-            <span className="text-txt-muted/70">/ {focusCfg.dailyGoal} 个番茄</span>
+            <span className="text-txt-muted/70">/ {focusCfg.dailyGoal} 个番茄 · {todayFocusMinutes()} 分钟</span>
           </span>
           <button
             onClick={() => { setCfgDraft(focusCfg); setCfgOpen((v) => !v) }}
@@ -312,9 +203,9 @@ export function FocusView() {
               />
             </svg>
             <div className="absolute inset-0 flex flex-col items-center justify-center">
-              <p className="font-mono text-5xl font-bold tracking-tight tabular-nums">{fmt(remaining)}</p>
-              <p className="mt-2 text-xs tracking-widest text-txt-muted">
-                {selectedTask ? `正在专注:${selectedTask.title}` : MODES.find((m) => m.value === mode)!.label}
+              <p className="font-mono text-5xl font-bold tracking-tight tabular-nums">{formatFocusTime(remaining)}</p>
+              <p className="mt-2 max-w-64 truncate text-xs tracking-widest text-txt-muted">
+                {selectedTask ? `正在专注:${selectedTask.title}` : FOCUS_MODE_LABELS[mode]}
               </p>
             </div>
           </div>
@@ -322,6 +213,7 @@ export function FocusView() {
           <div className="flex items-center gap-3">
             <button
               onClick={toggleRun}
+              disabled={busy}
               className="neon-gradient-bg flex h-14 w-14 cursor-pointer items-center justify-center rounded-full text-white transition-transform hover:scale-105"
               aria-label={running ? '暂停' : '开始'}
             >
@@ -329,13 +221,15 @@ export function FocusView() {
             </button>
             <button
               onClick={reset}
+              disabled={busy}
               className="flex h-11 w-11 cursor-pointer items-center justify-center rounded-full border border-line-3 text-txt-muted transition-colors hover:border-line-strong hover:text-txt-secondary"
               aria-label="重置"
             >
               <RotateCcw size={17} />
             </button>
             <button
-              onClick={complete}
+              onClick={skip}
+              disabled={busy}
               className="flex h-11 w-11 cursor-pointer items-center justify-center rounded-full border border-line-3 text-txt-muted transition-colors hover:border-line-strong hover:text-txt-secondary"
               aria-label="跳过"
             >
@@ -364,8 +258,9 @@ export function FocusView() {
             {focusableTasks.length === 0 ? (
               <p className="py-4 text-center text-xs text-txt-muted">没有进行中的任务,也可以不带任务纯专注</p>
             ) : (
-              <Select value={taskId} onChange={(e) => setTaskId(e.target.value)}>
-                <option value="">不关联任务(纯专注)</option>
+              <Select value={taskId} disabled={Boolean(timer.sessionId) || busy} onChange={(e) => void useFocusStore.getState().selectTask(e.target.value, useAuthStore.getState().user?.id ?? '')}>
+                                <option value="">不关联任务(纯专注)</option>
+                {selectedTask && !focusableTasks.some((t) => t.id === selectedTask.id) && <option value={selectedTask.id}>{selectedTask.title}（本次已关联）</option>}
                 {focusableTasks.map((t) => (
                   <option key={t.id} value={t.id}>
                     {t.title}
@@ -375,7 +270,7 @@ export function FocusView() {
               </Select>
             )}
             <p className="mt-3 text-[11px] leading-relaxed text-txt-muted">
-              25 分钟专注 + 5 分钟短休,每完成一个番茄自动切换;计时中切走也没关系,标题栏会一直显示倒计时。
+              已记录的专注按实际设置的分钟统计。切换页面或刷新会恢复计时；关闭浏览器后会在下次打开时核对到时状态。跳过不计完成，关联任务需在开始前选择。
             </p>
           </Card>
 

@@ -1,4 +1,5 @@
 import { create } from 'zustand'
+import { normalizeDashboardLayout, type DashboardWidget } from '@/features/dashboard/dashboardLayout'
 
 /** 应用设置(存 localStorage,本地/云端模式通用) */
 
@@ -11,6 +12,8 @@ export interface WeatherCity {
 }
 
 interface Settings {
+  dashboardLayout: DashboardWidget[]
+  setDashboardLayout: (layout: DashboardWidget[]) => void
   /** 主题:dark(默认)/ light */
   theme: Theme
   setTheme: (theme: Theme) => void
@@ -26,7 +29,7 @@ interface Settings {
 
 const KEY = 'nexus:settings'
 
-type Stored = Pick<Settings, 'weatherCity' | 'theme' | 'lastExportAt' | 'firstOpenedAt'>
+type Stored = Pick<Settings, 'weatherCity' | 'theme' | 'lastExportAt' | 'firstOpenedAt' | 'dashboardLayout'>
 
 function load(): Stored {
   try {
@@ -34,6 +37,7 @@ function load(): Stored {
     const parsed = raw ? (JSON.parse(raw) as Partial<Stored>) : {}
     const stored: Stored = {
       weatherCity: parsed.weatherCity ?? null,
+      dashboardLayout: normalizeDashboardLayout(parsed.dashboardLayout),
       theme: parsed.theme === 'light' ? 'light' : 'dark',
       lastExportAt: parsed.lastExportAt ?? null,
       firstOpenedAt: parsed.firstOpenedAt ?? null,
@@ -51,6 +55,7 @@ function load(): Stored {
   } catch {
     return {
       weatherCity: null,
+      dashboardLayout: normalizeDashboardLayout(null),
       theme: 'dark',
       lastExportAt: null,
       firstOpenedAt: new Date().toISOString(),
@@ -75,6 +80,12 @@ export function applyTheme(theme: Theme) {
 const initial = load()
 
 export const useSettingsStore = create<Settings>((set) => ({
+  dashboardLayout: initial.dashboardLayout,
+  setDashboardLayout(layout) {
+    const dashboardLayout = normalizeDashboardLayout(layout)
+    persist({ dashboardLayout })
+    set({ dashboardLayout })
+  },
   theme: initial.theme,
   setTheme(theme) {
     persist({ theme })

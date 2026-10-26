@@ -3,7 +3,8 @@ import { createPortal } from 'react-dom'
 import { X } from 'lucide-react'
 import { MOODS } from '@/lib/data/types'
 import { isoToLocalDateStr } from '@/lib/utils'
-import { loadHistory } from '@/lib/pomodoro'
+import { loadFocusMinutes } from '@/lib/pomodoro'
+import { useFocusHistory } from '@/lib/useFocusHistory'
 import { useDailyStore } from '@/stores/dailyStore'
 import { useHabitStore, streakOf } from '@/stores/habitStore'
 import { activeNotes, useNoteStore } from '@/stores/noteStore'
@@ -31,6 +32,7 @@ function cnNum(big?: boolean) {
 }
 
 export function WrappedModal({ open, onClose }: { open: boolean; onClose: () => void }) {
+  const focusRevision = useFocusHistory()
   const allTasks = useTaskStore((s) => s.tasks)
   const notes = useNoteStore((s) => s.notes)
   const habits = useHabitStore((s) => s.habits)
@@ -41,7 +43,7 @@ export function WrappedModal({ open, onClose }: { open: boolean; onClose: () => 
     const done = tasks.filter((t) => t.status === 'done')
     const total = tasks.length
     const rate = total ? Math.round((done.length / total) * 100) : 0
-    const focusMinutes = tasks.reduce((s, t) => s + (t.focusMinutes ?? 0), 0) + Object.values(loadHistory()).reduce((a, b) => a + b, 0) * 25
+    const focusMinutes = Object.values(loadFocusMinutes()).reduce((sum, minutes) => sum + minutes, 0)
 
     // 最勤的一天:按完成时间分布
     const byDay = new Map<string, number>()
@@ -89,7 +91,7 @@ export function WrappedModal({ open, onClose }: { open: boolean; onClose: () => 
       moodEmoji,
       title,
     }
-  }, [allTasks, notes, habits, dailies])
+  }, [allTasks, notes, habits, dailies, focusRevision, open])
 
   if (!open) return null
 

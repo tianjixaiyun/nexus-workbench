@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { CountUp, TiltCard } from '@/components/fx/micro'
 import { Aurora, BorderBeam } from '@/components/fx/bits'
 import { Link, useNavigate } from 'react-router'
@@ -20,6 +20,7 @@ import { Card } from '@/components/ui/Card'
 import { Chart, chartPalette, darkChartBase } from '@/components/ui/Chart'
 import { cn, formatDate, greeting, isoToLocalDateStr, toDateStr, todayStr } from '@/lib/utils'
 import { todaySessions } from '@/lib/pomodoro'
+import { useFocusHistory } from '@/lib/useFocusHistory'
 import { useLinkStore } from '@/stores/linkStore'
 import { useSettingsStore } from '@/stores/settingsStore'
 import { useDailyStore, todayMood } from '@/stores/dailyStore'
@@ -33,6 +34,9 @@ import { GoalsCard } from './GoalsCard'
 import { MiniCalendar } from './MiniCalendar'
 import { MilestonesCard } from './MilestonesCard'
 import { WeatherCard } from './WeatherCard'
+import { DashboardCustomizer } from './DashboardCustomizer'
+import { DailyReflection } from './DailyReflection'
+import { DASHBOARD_WIDGETS, type DashboardWidgetId } from './dashboardLayout'
 
 /** 首页大时钟:秒级跳动只重渲染自己 */
 function LiveClock({ className }: { className?: string }) {
@@ -105,6 +109,13 @@ function StatCard({ icon: Icon, label, value, tint, progress }: {
 }
 
 export function DashboardView() {
+  useFocusHistory()
+  const layout = useSettingsStore(s => s.dashboardLayout)
+  const [actionError, setActionError] = useState('')
+  const perform = async (action: () => Promise<unknown>) => {
+    setActionError('')
+    try { await action() } catch { setActionError('操作未保存，请稍后再试。你的记录仍保留。') }
+  }
   const allTasks = useTaskStore((s) => s.tasks)
   const { notes: allNotes, loaded: notesLoaded } = useNoteStore()
   const { links, loaded: linksLoaded } = useLinkStore()
@@ -117,6 +128,7 @@ export function DashboardView() {
 
   const tasks = useMemo(() => activeTasks(allTasks), [allTasks])
   const notes = useMemo(() => activeNotes(allNotes), [allNotes])
+  const activeHabits = habits.filter(h => !h.archived)
   const today = todayStr()
   const quote = useMemo(quoteOfToday, [])
 
@@ -208,9 +220,194 @@ export function DashboardView() {
         },
       ],
     }),
-    [trend],
+    [trend, base, pal],
   )
 
+  const widgets: Record<DashboardWidgetId, ReactNode> = {
+    today: (<Card className="flex h-full flex-col">
+          <div className="mb-3 flex items-center justify-between">
+            <p className="text-sm font-semibold tracking-wide text-txt-secondary">今日到期</p>
+            <Link to="/tasks" className="flex items-center gap-0.5 text-xs text-accent hover:text-accent">
+              全部任务
+              <ChevronRight size={12} />
+            </Link>
+          </div>
+          {todayTasks.length === 0 ? (
+            <div className="flex flex-1 flex-col items-center justify-center gap-2 py-8 text-center">
+              <CircleCheck size={22} className="text-success" />
+              <p className="text-xs text-txt-muted">没有临期任务,节奏在自己手里</p>
+            </div>
+          ) : (
+            <div className="flex flex-col gap-1.5">
+              {todayTasks.map((task) => (
+                <div
+                  key={task.id}
+                  className="group flex cursor-pointer items-center gap-2.5 rounded-xl px-2 py-2 transition-colors hover:bg-surface-2"
+                  onClick={() => void perform(() => toggleDone(task.id))}
+                >
+                  <span className="h-4 w-4 shrink-0 rounded-full border border-line-strong transition-colors group-hover:border-accent" />
+                  <p className="min-w-0 flex-1 truncate text-sm">{task.title}</p>
+                  <Badge tone={task.dueDate === today ? 'amber' : 'rose'}>
+                    {task.dueDate === today ? '今天' : formatDate(task.dueDate)}
+                  </Badge>
+                  <Badge tone={PRIORITY_META[task.priority].tone}>{PRIORITY_META[task.priority].label}</Badge>
+                </div>
+              ))}
+            </div>
+          )}
+        </Card>),
+    trend: (<Card spotlight>
+          <p className="mb-2 text-sm font-semibold tracking-wide text-txt-secondary">近 7 天完成趋势</p>
+          <Chart option={trendOption} className="h-60 w-full" />
+        </Card>),
+    goals: <GoalsCard />,
+    habits: (<Card>
+          <div className="mb-3 flex items-center justify-between">
+            <p className="text-sm font-semibold tracking-wide text-txt-secondary">今日打卡</p>
+            <Link to="/habits" className="flex items-center gap-0.5 text-xs text-accent hover:text-accent">
+              全部习惯
+              <ChevronRight size={12} />
+            </Link>
+          </div>
+          {activeHabits.length === 0 ? (
+            <div className="flex flex-col items-center gap-2 py-6 text-center">
+              <Flame size={22} className="text-txt-muted" />
+              <p className="text-xs text-txt-muted">建立习惯,让坚持看得见</p>
+              <Button size="sm" variant="outline" onClick={() => navigate('/habits')}>
+                去创建
+              </Button>
+            </div>
+          ) : (
+            <div className="flex flex-col gap-2">
+              {activeHabits.slice(0, 5).map((habit) => {
+                const done = habit.dates.includes(today)
+                return (
+                  <button
+                    key={habit.id}
+                    onClick={() => void perform(() => toggleToday(habit.id))}
+                    className={cn(
+                      'flex cursor-pointer items-center gap-2.5 rounded-xl px-2 py-1.5 text-left transition-colors',
+                      done ? 'bg-surface-2' : 'hover:bg-surface-2',
+                    )}
+                  >
+                    <span
+                      className={cn(
+                        'flex h-6 w-6 shrink-0 items-center justify-center rounded-full border transition-all',
+                        done ? cn('border-transparent', HABIT_COLOR_META[habit.color].tint) : 'border-line-strong',
+                      )}
+                    >
+                      {done && <Check size={13} className={HABIT_COLOR_META[habit.color].text} />}
+                    </span>
+                    <span className="text-base">{habit.icon}</span>
+                    <p className={cn('min-w-0 flex-1 truncate text-sm', done && 'text-txt-muted')}>{habit.name}</p>
+                    <span className="flex items-center gap-1 text-[11px] text-txt-muted">
+                      <Flame size={11} className={streakOf(habit) > 0 ? 'text-warn' : undefined} />
+                      {streakOf(habit)}
+                    </span>
+                  </button>
+                )
+              })}
+            </div>
+          )}
+
+          <div className="mt-3 border-t border-line-1 pt-3">
+            <div className="flex items-center gap-2">
+              <span className="shrink-0 text-[11px] text-txt-muted">今天的心情:</span>
+              <div className="flex gap-1">
+                {MOODS.map((m) => {
+                  const active = todayMood(dailies)?.mood === m.value
+                  return (
+                    <button
+                      key={m.value}
+                      onClick={() => void perform(() => upsertMood(today, m.value))}
+                      title={m.label}
+                      className={cn(
+                        'h-7 w-7 cursor-pointer rounded-lg text-sm transition-all',
+                        active ? 'bg-accent-soft ring-1 ring-accent' : 'opacity-45 hover:opacity-100',
+                      )}
+                    >
+                      {m.emoji}
+                    </button>
+                  )
+                })}
+                {todayMood(dailies) && (
+                  <span className="ml-auto self-center text-[11px] text-txt-muted">已记录 ✓</span>
+                )}
+              </div>
+            </div>
+          </div>
+        </Card>),
+    weather: <WeatherCard />,
+    milestones: <MilestonesCard />,
+    links: (<Card>
+          <div className="mb-3 flex items-center justify-between">
+            <p className="text-sm font-semibold tracking-wide text-txt-secondary">快捷入口</p>
+            <Link to="/links" className="flex items-center gap-0.5 text-xs text-accent hover:text-accent">
+              工具箱
+              <ChevronRight size={12} />
+            </Link>
+          </div>
+          {quickLinks.length === 0 ? (
+            <div className="flex flex-col items-center gap-2 py-6 text-center">
+              <Wrench size={22} className="text-txt-muted" />
+              <p className="text-xs text-txt-muted">把常用网站收进工具箱,这里一键直达</p>
+              <Button size="sm" variant="outline" onClick={() => navigate('/links')}>
+                去添加
+              </Button>
+            </div>
+          ) : (
+            <div className="flex flex-wrap gap-2">
+              {quickLinks.map((link) => (
+                <a
+                  key={link.id}
+                  href={link.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="glass-card glass-card-hover flex items-center gap-2 px-3 py-2 text-xs"
+                >
+                  <span className="flex h-5 w-5 items-center justify-center rounded-md bg-surface-3 text-[10px] font-bold">
+                    {link.name.charAt(0).toUpperCase()}
+                  </span>
+                  {link.name}
+                </a>
+              ))}
+            </div>
+          )}
+        </Card>),
+    notes: (<Card>
+          <div className="mb-3 flex items-center justify-between">
+            <p className="text-sm font-semibold tracking-wide text-txt-secondary">最近便签</p>
+            <Link to="/notes" className="flex items-center gap-0.5 text-xs text-accent hover:text-accent">
+              全部便签
+              <ChevronRight size={12} />
+            </Link>
+          </div>
+          {recentNotes.length === 0 ? (
+            <div className="flex flex-col items-center gap-2 py-6 text-center">
+              <StickyNote size={22} className="text-txt-muted" />
+              <p className="text-xs text-txt-muted">随手记一条想法,它会出现在这里</p>
+              <Button size="sm" variant="outline" onClick={() => navigate('/notes')}>
+                去记一条
+              </Button>
+            </div>
+          ) : (
+            <div className="flex flex-col gap-2">
+              {recentNotes.map((note) => (
+                <div
+                  key={note.id}
+                  onClick={() => navigate('/notes')}
+                  className="cursor-pointer rounded-xl border border-line-1 bg-surface-1 px-3.5 py-2.5 transition-colors hover:border-line-3"
+                >
+                  <p className="truncate text-sm font-medium">{note.title || '无标题'}</p>
+                  {note.content && <p className="mt-0.5 truncate text-xs text-txt-muted">{note.content}</p>}
+                </div>
+              ))}
+            </div>
+          )}
+        </Card>),
+    calendar: <MiniCalendar />,
+    reflection: <DailyReflection />,
+  }
   if (!loaded) {
     return (
       <div className="flex items-center justify-center gap-3 py-32 text-txt-secondary">
@@ -252,212 +449,18 @@ export function DashboardView() {
           progress={stats.completionRate}
         />
         <StatCard icon={StickyNote} label="便签数量" value={notes.length} tint="bg-violet-400/10 text-accent-2" />
-        <StatCard icon={TimerIcon} label="今日番茄" value={pomodoroToday} tint="bg-rose-400/10 text-danger" />
+        <div className="col-span-2 md:col-span-1"><StatCard icon={TimerIcon} label="今日番茄" value={pomodoroToday} tint="bg-rose-400/10 text-danger" /></div>
       </section>
 
-      {/* 趋势图 + 今日任务 */}
-      <section className="nexus-stagger-in grid gap-4 lg:grid-cols-5" style={{ animationDelay: '120ms' }}>
-        <Card spotlight className="lg:col-span-3">
-          <p className="mb-2 text-sm font-semibold tracking-wide text-txt-secondary">近 7 天完成趋势</p>
-          <Chart option={trendOption} className="h-60 w-full" />
-        </Card>
-        <Card className="flex flex-col lg:col-span-2">
-          <div className="mb-3 flex items-center justify-between">
-            <p className="text-sm font-semibold tracking-wide text-txt-secondary">今日到期</p>
-            <Link to="/tasks" className="flex items-center gap-0.5 text-xs text-accent hover:text-accent">
-              全部任务
-              <ChevronRight size={12} />
-            </Link>
-          </div>
-          {todayTasks.length === 0 ? (
-            <div className="flex flex-1 flex-col items-center justify-center gap-2 py-8 text-center">
-              <CircleCheck size={22} className="text-success" />
-              <p className="text-xs text-txt-muted">没有临期任务,节奏在自己手里</p>
-            </div>
-          ) : (
-            <div className="flex flex-col gap-1.5">
-              {todayTasks.map((task) => (
-                <div
-                  key={task.id}
-                  className="group flex cursor-pointer items-center gap-2.5 rounded-xl px-2 py-2 transition-colors hover:bg-surface-2"
-                  onClick={() => void toggleDone(task.id)}
-                >
-                  <span className="h-4 w-4 shrink-0 rounded-full border border-line-strong transition-colors group-hover:border-accent" />
-                  <p className="min-w-0 flex-1 truncate text-sm">{task.title}</p>
-                  <Badge tone={task.dueDate === today ? 'amber' : 'rose'}>
-                    {task.dueDate === today ? '今天' : formatDate(task.dueDate)}
-                  </Badge>
-                  <Badge tone={PRIORITY_META[task.priority].tone}>{PRIORITY_META[task.priority].label}</Badge>
-                </div>
-              ))}
-            </div>
-          )}
-        </Card>
+      <DashboardCustomizer />
+      {actionError && <p role="alert" className="rounded-xl border border-danger p-3 text-sm text-danger">{actionError}</p>}
+      <section aria-label="首页组件" className="grid min-w-0 grid-cols-1 items-start gap-4 lg:grid-cols-12">
+        {layout.filter(w => w.visible || w.id === 'reflection').map(widget => {
+          const meta = DASHBOARD_WIDGETS.find(w => w.id === widget.id)!
+          return <div key={widget.id} data-widget={widget.id} hidden={!widget.visible} className={cn('min-w-0', !widget.visible && 'hidden', widget.id === 'today' && !layout.some(w => w.id === 'trend' && w.visible) ? 'lg:col-span-12' : meta.span)}>{widgets[widget.id]}</div>
+        })}
       </section>
-
-      {/* 目标进展 */}
-      <GoalsCard />
-
-      {/* 习惯打卡 + 天气 + 倒数日 */}
-      <section className="nexus-stagger-in grid gap-4 lg:grid-cols-6" style={{ animationDelay: '180ms' }}>
-        <Card className="lg:col-span-2">
-          <div className="mb-3 flex items-center justify-between">
-            <p className="text-sm font-semibold tracking-wide text-txt-secondary">今日打卡</p>
-            <Link to="/habits" className="flex items-center gap-0.5 text-xs text-accent hover:text-accent">
-              全部习惯
-              <ChevronRight size={12} />
-            </Link>
-          </div>
-          {habits.length === 0 ? (
-            <div className="flex flex-col items-center gap-2 py-6 text-center">
-              <Flame size={22} className="text-txt-muted" />
-              <p className="text-xs text-txt-muted">建立习惯,让坚持看得见</p>
-              <Button size="sm" variant="outline" onClick={() => navigate('/habits')}>
-                去创建
-              </Button>
-            </div>
-          ) : (
-            <div className="flex flex-col gap-2">
-              {habits.slice(0, 5).map((habit) => {
-                const done = habit.dates.includes(today)
-                return (
-                  <button
-                    key={habit.id}
-                    onClick={() => void toggleToday(habit.id)}
-                    className={cn(
-                      'flex cursor-pointer items-center gap-2.5 rounded-xl px-2 py-1.5 text-left transition-colors',
-                      done ? 'bg-surface-2' : 'hover:bg-surface-2',
-                    )}
-                  >
-                    <span
-                      className={cn(
-                        'flex h-6 w-6 shrink-0 items-center justify-center rounded-full border transition-all',
-                        done ? cn('border-transparent', HABIT_COLOR_META[habit.color].tint) : 'border-line-strong',
-                      )}
-                    >
-                      {done && <Check size={13} className={HABIT_COLOR_META[habit.color].text} />}
-                    </span>
-                    <span className="text-base">{habit.icon}</span>
-                    <p className={cn('min-w-0 flex-1 truncate text-sm', done && 'text-txt-muted')}>{habit.name}</p>
-                    <span className="flex items-center gap-1 text-[11px] text-txt-muted">
-                      <Flame size={11} className={streakOf(habit) > 0 ? 'text-warn' : undefined} />
-                      {streakOf(habit)}
-                    </span>
-                  </button>
-                )
-              })}
-            </div>
-          )}
-
-          <div className="mt-3 border-t border-line-1 pt-3">
-            <div className="flex items-center gap-2">
-              <span className="shrink-0 text-[11px] text-txt-muted">今天的心情:</span>
-              <div className="flex gap-1">
-                {MOODS.map((m) => {
-                  const active = todayMood(dailies)?.mood === m.value
-                  return (
-                    <button
-                      key={m.value}
-                      onClick={() => void upsertMood(today, m.value)}
-                      title={m.label}
-                      className={cn(
-                        'h-7 w-7 cursor-pointer rounded-lg text-sm transition-all',
-                        active ? 'bg-accent-soft ring-1 ring-accent' : 'opacity-45 hover:opacity-100',
-                      )}
-                    >
-                      {m.emoji}
-                    </button>
-                  )
-                })}
-                {todayMood(dailies) && (
-                  <span className="ml-auto self-center text-[11px] text-txt-muted">已记录 ✓</span>
-                )}
-              </div>
-            </div>
-          </div>
-        </Card>
-
-        <WeatherCard />
-
-        <div className="lg:col-span-2">
-          <MilestonesCard />
-        </div>
-      </section>
-
-      {/* 快捷入口 + 最近便签 + 迷你日历 */}
-      <section className="nexus-stagger-in grid gap-4 lg:grid-cols-6" style={{ animationDelay: '240ms' }}>
-        <Card className="lg:col-span-2">
-          <div className="mb-3 flex items-center justify-between">
-            <p className="text-sm font-semibold tracking-wide text-txt-secondary">快捷入口</p>
-            <Link to="/links" className="flex items-center gap-0.5 text-xs text-accent hover:text-accent">
-              工具箱
-              <ChevronRight size={12} />
-            </Link>
-          </div>
-          {quickLinks.length === 0 ? (
-            <div className="flex flex-col items-center gap-2 py-6 text-center">
-              <Wrench size={22} className="text-txt-muted" />
-              <p className="text-xs text-txt-muted">把常用网站收进工具箱,这里一键直达</p>
-              <Button size="sm" variant="outline" onClick={() => navigate('/links')}>
-                去添加
-              </Button>
-            </div>
-          ) : (
-            <div className="flex flex-wrap gap-2">
-              {quickLinks.map((link) => (
-                <a
-                  key={link.id}
-                  href={link.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="glass-card glass-card-hover flex items-center gap-2 px-3 py-2 text-xs"
-                >
-                  <span className="flex h-5 w-5 items-center justify-center rounded-md bg-surface-3 text-[10px] font-bold">
-                    {link.name.charAt(0).toUpperCase()}
-                  </span>
-                  {link.name}
-                </a>
-              ))}
-            </div>
-          )}
-        </Card>
-
-        <Card className="lg:col-span-2">
-          <div className="mb-3 flex items-center justify-between">
-            <p className="text-sm font-semibold tracking-wide text-txt-secondary">最近便签</p>
-            <Link to="/notes" className="flex items-center gap-0.5 text-xs text-accent hover:text-accent">
-              全部便签
-              <ChevronRight size={12} />
-            </Link>
-          </div>
-          {recentNotes.length === 0 ? (
-            <div className="flex flex-col items-center gap-2 py-6 text-center">
-              <StickyNote size={22} className="text-txt-muted" />
-              <p className="text-xs text-txt-muted">随手记一条想法,它会出现在这里</p>
-              <Button size="sm" variant="outline" onClick={() => navigate('/notes')}>
-                去记一条
-              </Button>
-            </div>
-          ) : (
-            <div className="flex flex-col gap-2">
-              {recentNotes.map((note) => (
-                <div
-                  key={note.id}
-                  onClick={() => navigate('/notes')}
-                  className="cursor-pointer rounded-xl border border-line-1 bg-surface-1 px-3.5 py-2.5 transition-colors hover:border-line-3"
-                >
-                  <p className="truncate text-sm font-medium">{note.title || '无标题'}</p>
-                  {note.content && <p className="mt-0.5 truncate text-xs text-txt-muted">{note.content}</p>}
-                </div>
-              ))}
-            </div>
-          )}
-        </Card>
-
-        <div className="lg:col-span-2">
-          <MiniCalendar />
-        </div>
-      </section>
+      {layout.every(w => !w.visible) && <p className="py-8 text-center text-sm text-txt-muted">组件已全部隐藏。展开「自定义首页」重新勾选，或点击「恢复总览」。</p>}
     </div>
   )
 }

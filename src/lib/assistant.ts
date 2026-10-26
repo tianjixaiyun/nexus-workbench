@@ -65,7 +65,7 @@ function fmtTaskList(tasks: Task[], limit = 5): string {
   monday.setHours(0, 0, 0, 0)
   const weekDone = done.filter((t) => t.completedAt && new Date(t.completedAt) >= monday).length
   const weekSessions = recentSessions(7).reduce((s, d) => s + d.count, 0)
-  const focusMinutes = weekSessions * 25
+  const focusMinutes = recentSessions(7).reduce((sum, day) => sum + day.minutes, 0)
   const bestHabit = [...habits].sort((a, b) => streakOf(b) - streakOf(a))[0]
   const moodRecent = dailies.slice(-3)
 
@@ -171,13 +171,13 @@ const INTENTS: Intent[] = [
 
 # 数据
 近 7 天番茄数:{{sessions}}
-折算专注时长:{{minutes}} 分钟
+累计专注时长:{{minutes}} 分钟
 
 # 要求
 指出专注量处于什么水平(<5 个偏少,5-15 个良好,>15 个优秀),给一条提升建议。`,
     slots: (s) => [
       { name: 'sessions', value: String(s.weekSessions) },
-      { name: 'minutes', value: String(s.weekSessions * 25) },
+      { name: 'minutes', value: String(s.focusMinutes) },
     ],
     actions: [['开始专注', '/focus']],
   },

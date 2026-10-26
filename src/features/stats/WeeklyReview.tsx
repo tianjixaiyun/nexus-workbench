@@ -1,68 +1,38 @@
-import { useMemo } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Moon, Sparkles } from 'lucide-react'
 import { Card } from '@/components/ui/Card'
 import { MOODS } from '@/lib/data/types'
 import { render } from '@/lib/assistant'
-import { cn, toDateStr, todayStr } from '@/lib/utils'
+import { cn, todayStr } from '@/lib/utils'
 import { recentSessions } from '@/lib/pomodoro'
 import { todayMood, useDailyStore } from '@/stores/dailyStore'
 import { useHabitStore } from '@/stores/habitStore'
-import { activeTasks, useTaskStore } from '@/stores/taskStore'
+import { useTaskStore } from '@/stores/taskStore'
+import { summarizeWeek, weekDateKeys, type WeekStats } from '@/lib/reflection'
 
-/** 本周一 ~ 今天的日期键 */
-function weekKeys(): string[] {
-  const now = new Date()
-  const monday = new Date(now)
-  monday.setDate(now.getDate() - ((now.getDay() + 6) % 7))
-  const keys: string[] = []
-  for (let i = 0; i < 7; i++) {
-    const d = new Date(monday)
-    d.setDate(monday.getDate() + i)
-    if (d > now) break
-    keys.push(toDateStr(d))
-  }
-  return keys
-}
-
-export interface WeekStats {
-  tasksDone: number
-  habitCheckins: number
-  focusMinutes: number
-  moodAvg: number | null
-  days: number
-}
+export type { WeekStats } from '@/lib/reflection'
 
 export function useWeekStats(): WeekStats {
   const tasks = useTaskStore((s) => s.tasks)
   const habits = useHabitStore((s) => s.habits)
   const dailies = useDailyStore((s) => s.dailies)
-
-  return useMemo(() => {
-    const keys = new Set(weekKeys())
-    const tasksDone = activeTasks(tasks).filter(
-      (t) => t.completedAt && keys.has(isoLocal(t.completedAt)),
-    ).length
-    const habitCheckins = habits.reduce(
-      (sum, h) => sum + h.dates.filter((d) => keys.has(d)).length,
-      0,
-    )
-    const focusMinutes = recentSessions(7).reduce((sum, d) => sum + d.count, 0) * 25
-    const moods = dailies.filter((d) => keys.has(d.date)).map((d) => d.mood)
-    return {
-      tasksDone,
-      habitCheckins,
-      focusMinutes,
-      moodAvg: moods.length ? moods.reduce((a, b) => a + b, 0) / moods.length : null,
-      days: keys.size,
+  const [revision, setRevision] = useState(0)
+  useEffect(() => {
+    const refresh = () => setRevision((value) => value + 1)
+    window.addEventListener('nexus:focus-history', refresh)
+    window.addEventListener('storage', refresh)
+    window.addEventListener('focus', refresh)
+    return () => {
+      window.removeEventListener('nexus:focus-history', refresh)
+      window.removeEventListener('storage', refresh)
+      window.removeEventListener('focus', refresh)
     }
-  }, [tasks, habits, dailies])
-}
+  }, [])
 
-function isoLocal(iso: string): string {
-  const d = new Date(iso)
-  return toDateStr(d)
+  return useMemo(() => summarizeWeek({
+    tasks, habits, dailies, focus: recentSessions(weekDateKeys().length),
+  }), [tasks, habits, dailies, revision])
 }
-
 function moodEmoji(avg: number): string {
   if (avg >= 4.5) return '🤩'
   if (avg >= 3.5) return '😊'
@@ -76,6 +46,7 @@ export function WeeklyReviewCard() {
   const week = useWeekStats()
   const dailies = useDailyStore((s) => s.dailies)
   const mood = todayMood(dailies)
+  const [moodError, setMoodError] = useState('')
 
   // 评语用提示词模板生成:稳定骨架 + 数据槽位(2026 提示词最佳实践)
   const comment = useMemo(() => {
@@ -100,12 +71,12 @@ export function WeeklyReviewCard() {
 
   return (
     <Card>
-      <div className="mb-3 flex items-center justify-between">
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
         <p className="flex items-center gap-1.5 text-sm font-semibold tracking-wide text-txt-secondary">
           <Sparkles size={15} className="text-accent" />
           本周回顾(自动生成)
         </p>
-        <span className="text-[11px] text-txt-muted">最近 {week.days} 天</span>
+        <span className="text-[11px] text-txt-muted">本周一至今天 · {week.days} 天</span>
       </div>
 
       <div className="grid grid-cols-4 gap-2">
@@ -127,6 +98,7 @@ export function WeeklyReviewCard() {
         💬 {comment}
       </p>
 
+      {moodError && <p role="alert" className="mt-2 text-xs text-danger">{moodError}</p>}
       {/* 顺手把今天的心情也记了 */}
       <div className="mt-3 flex items-center gap-2">
         <Moon size={13} className="shrink-0 text-txt-muted" />
@@ -137,7 +109,12 @@ export function WeeklyReviewCard() {
             return (
               <button
                 key={m.value}
-                onClick={() => void useDailyStore.getState().upsert(todayStr(), m.value)}
+                onClick={() => {
+                  setMoodError('')
+                  void useDailyStore.getState().upsert(todayStr(), m.value).catch(() => setMoodError('心情未保存，请重试。'))
+                }}
+                aria-label={m.label}
+                aria-pressed={active}
                 title={m.label}
                 className={cn(
                   'h-7 w-7 cursor-pointer rounded-lg text-sm transition-all',

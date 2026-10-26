@@ -2,7 +2,7 @@ import { useTaskStore } from '@/stores/taskStore'
 import { useDailyStore } from '@/stores/dailyStore'
 import { useHabitStore } from '@/stores/habitStore'
 import { useMemoStore } from '@/stores/memoStore'
-import { loadHistory } from './pomodoro'
+import { loadHistory, loadFocusMinutes } from './pomodoro'
 import { MOODS } from './data/types'
 import { todayStr } from './utils'
 
@@ -58,7 +58,7 @@ export function journalFacts(date: string) {
   const habitsDone = activeHabits.filter((h) => h.dates.includes(date))
   const daily = useDailyStore.getState().dailies.find((d) => d.date === date)
   const memos = useMemoStore.getState().memos.filter((m) => m.createdAt.startsWith(date))
-  return { date, done, created, sessions, focusMinutes: sessions * 25, activeHabits, habitsDone, daily, memos }
+  return { date, done, created, sessions, focusMinutes: loadFocusMinutes()[date] ?? 0, activeHabits, habitsDone, daily, memos }
 }
 
 /** 本地模板引擎:把当天事实写成一段可读日志 */
