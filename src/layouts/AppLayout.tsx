@@ -1,12 +1,12 @@
 import { useEffect, useRef, useState } from 'react'
-import { NavLink, Navigate, Outlet, useLocation, useNavigate } from 'react-router'
-import { Cloud, HardDrive, Loader2, LogOut, Menu, Moon, PanelLeftClose, PanelLeftOpen, Search, Sun, X, Zap } from 'lucide-react'
+import { Link, NavLink, Navigate, Outlet, useLocation, useNavigate } from 'react-router'
+import { ChevronDown, Cloud, HardDrive, Loader2, LogOut, Menu, Moon, PanelLeftClose, PanelLeftOpen, Plus, RefreshCw, Search, Sun, X, Zap } from 'lucide-react'
 import { cn, todayStr } from '@/lib/utils'
 import { isCloudMode } from '@/lib/config'
-import { startRealtime } from '@/lib/data/realtime'
+import { refreshCloudData, startRealtime } from '@/lib/data/realtime'
 import { requestAction } from '@/lib/uiBus'
 import { liquidNavigate } from '@/components/fx/overlays'
-import { APP_MODULES, shortcutDestination } from '@/lib/modules'
+import { APP_MODULES, NAV_GROUPS, modulesForGroup, shortcutDestination, type AppModule } from '@/lib/modules'
 import { useNativeDialog } from '@/components/ui/Modal'
 import { useAuthStore } from '@/stores/authStore'
 import { useContactStore } from '@/stores/contactStore'
@@ -31,28 +31,25 @@ import { Toaster } from '@/components/Toaster'
 import { CalmModeToggle } from '@/components/CalmModeToggle'
 import { prefersReducedMotion } from '@/lib/useReducedMotion'
 
-const NAV_ITEMS = APP_MODULES
+import { loadNavigationPreferences, saveNavigationPreferences, type NavigationPreferences } from '@/lib/navigationPreferences'
+import { useSyncStore } from '@/stores/syncStore'
+import { toast } from '@/stores/toastStore'
 
-/** 顶栏时钟:自包含的秒级重渲染,避免牵连整个应用树每秒刷新 */
-function Clock() {
-  const [now, setNow] = useState(() => new Date())
-  useEffect(() => {
-    const timer = setInterval(() => setNow(new Date()), 1000)
-    return () => clearInterval(timer)
-  }, [])
-  return (
-    <span className="hidden font-mono text-xs text-txt-muted tabular-nums sm:inline">
-      {now.toLocaleTimeString('zh-CN', { hour12: false })}
-    </span>
-  )
-}
+const SYNC_LABELS = { local: '本机空间', connecting: '连接中', live: '实时已连接', offline: '离线', error: '连接需检查' } as const
 
 export function AppLayout() {
   const { user, ready, init, signOut } = useAuthStore()
   const theme = useSettingsStore((s) => s.theme)
   const allTasks = useTaskStore((st) => st.tasks)
   const setTheme = useSettingsStore((s) => s.setTheme)
-  const [collapsed, setCollapsed] = useState(false)
+  const [navigation, setNavigation] = useState(loadNavigationPreferences)
+  const collapsed = navigation.collapsed
+  const { status: syncStatus, message: syncMessage, lastSyncedAt, refreshing } = useSyncStore()
+  const owner = user?.id
+  const updateNavigation = (next: NavigationPreferences) => {
+    setNavigation(next)
+    if (!saveNavigationPreferences(next)) toast.error('导航偏好未能保存', '当前页面已切换，刷新后可能恢复。')
+  }
   const [mobileOpen, setMobileOpen] = useState(false)
   const drawerRef = useNativeDialog(mobileOpen)
   const mainRef = useRef<HTMLElement>(null)
@@ -60,7 +57,7 @@ export function AppLayout() {
   const [helpOpen, setHelpOpen] = useState(false)
   const [quickOpen, setQuickOpen] = useState(false)
   const [assistantOpen, setAssistantOpen] = useState(false)
-  const [dueDismissed, setDueDismissed] = useState(() => sessionStorage.getItem('nexus-due-dismissed') === '1')
+  const [dueDismissed, setDueDismissed] = useState(() => { try { return sessionStorage.getItem('nexus-due-dismissed') === '1' } catch { return false } })
   const location = useLocation()
   const navigate = useNavigate()
 
@@ -81,9 +78,14 @@ export function AppLayout() {
     if (!ready) void init()
   }, [ready, init])
 
-  // 会话就绪后拉取各模块数据(只拉一次)
+  // 云端由受控刷新统一应用，本地沿用现有按模块加载。
   useEffect(() => {
-    if (!ready || !user) return
+    if (!ready || !owner) return
+    if (isCloudMode) {
+      const stop = startRealtime()
+      void refreshCloudData().catch(() => {})
+      return stop
+    }
     const stores = [
       useTaskStore.getState(),
       useNoteStore.getState(),
@@ -100,13 +102,12 @@ export function AppLayout() {
     for (const s of stores) {
       if (!s.loaded) void s.fetch()
     }
-    // 云端模式:订阅实时同步,其他设备/标签页的改动实时推送过来
-    if (isCloudMode) startRealtime()
-  }, [ready, user])
+  }, [ready, owner])
 
   // 弹窗和中文输入法组合期间不触发页面快捷键。
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
+      if (isCloudMode && !useAuthStore.getState().user) return
       if (e.defaultPrevented || e.isComposing) return
       const modalOpen = Boolean(document.querySelector('dialog[open]'))
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
@@ -152,7 +153,7 @@ export function AppLayout() {
   }, [])
 
   // 云端模式未登录 → 去登录页
-  if (isCloudMode && ready && !user) {
+  if (isCloudMode && ready && !user && location.pathname !== '/settings') {
     return <Navigate to="/login" replace />
   }
 
@@ -167,7 +168,7 @@ export function AppLayout() {
   }
 
   const handleSignOut = async () => {
-    await signOut()
+    try { await signOut() } catch { toast.error('退出未完成', '请检查网络后重试。'); return }
     useTaskStore.getState().reset()
     useNoteStore.getState().reset()
     useLinkStore.getState().reset()
@@ -182,56 +183,43 @@ export function AppLayout() {
     navigate('/login', { replace: true })
   }
 
-  const title = APP_MODULES.find((module) => module.to === location.pathname)?.label ?? '工作台'
-  const sidebarContent = (compact: boolean, mobile = false) => (
-    <>
-      <div className="flex items-center gap-3 px-4 py-5">
-        <div className="neon-gradient-bg glow-cyan flex h-9 w-9 shrink-0 items-center justify-center rounded-xl"><Zap size={18} className="text-white" /></div>
-        {!compact && <div className="min-w-0 flex-1"><p className="neon-gradient-text text-lg leading-5 font-bold tracking-widest">NEXUS</p><p className="text-[11px] text-txt-muted">个人工作台</p></div>}
-        {mobile && <button type="button" onClick={() => setMobileOpen(false)} aria-label="关闭导航菜单" className="cursor-pointer rounded-lg p-2 text-txt-muted hover:bg-surface-2 focus-visible:outline-2 focus-visible:outline-accent"><X size={18} /></button>}
-      </div>
-      <nav aria-label="主要导航" className="mt-2 flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto px-3">
-        {NAV_ITEMS.map(({ to, label, icon: Icon }) => (
-          <NavLink
-            key={to}
-            to={to}
-            end={to === '/'}
-            onClick={(e) => {
-              if (e.ctrlKey || e.metaKey || e.shiftKey || e.altKey || e.button !== 0) return
-              e.preventDefault()
-              setMobileOpen(false)
-              if (prefersReducedMotion()) navigate(to)
-              else liquidNavigate(navigate, to, e)
-            }}
-            title={compact ? label : undefined}
-            className={({ isActive }) => cn('group relative flex shrink-0 items-center gap-3 rounded-xl px-3 py-2.5 text-sm transition-all focus-visible:outline-2 focus-visible:outline-accent', isActive ? 'bg-accent-soft text-accent' : 'text-txt-secondary hover:bg-surface-2 hover:text-txt-primary')}
-          >
-            {({ isActive }) => <>
-              {isActive && <span className="neon-gradient-bg absolute top-1/2 left-0 h-5 w-[3px] -translate-y-1/2 rounded-full" />}
-              <Icon size={19} className="shrink-0" aria-hidden="true" />
-              <span className={compact ? 'sr-only' : 'truncate'}>{label}</span>
-            </>}
-          </NavLink>
-        ))}
-      </nav>
-      <div className="flex shrink-0 flex-col gap-1 px-3 pt-3 pb-4">
-        <button type="button" onClick={() => { setMobileOpen(false); setPaletteOpen(true) }} title="搜索与命令面板 (Ctrl+K)" className="flex cursor-pointer items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-txt-muted hover:bg-surface-2 focus-visible:outline-2 focus-visible:outline-accent">
-          <Search size={18} className="shrink-0" aria-hidden="true" />
-          <span className={compact ? 'sr-only' : 'flex-1 truncate text-left'}>搜索</span>
-          {!compact && <kbd className="rounded-md border border-line-3 bg-surface-2 px-1.5 py-0.5 font-mono text-[10px]">Ctrl K</kbd>}
-        </button>
-        {isCloudMode && <button type="button" onClick={handleSignOut} title="退出登录" className="flex cursor-pointer items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-txt-secondary hover:bg-surface-2 hover:text-danger focus-visible:outline-2 focus-visible:outline-accent">
-          <LogOut size={18} className="shrink-0" aria-hidden="true" /><span className={compact ? 'sr-only' : 'truncate'}>退出登录</span>
-        </button>}
-        {!mobile && <button type="button" onClick={() => setCollapsed((value) => !value)} aria-expanded={!compact} title={compact ? '展开菜单' : '收起菜单'} className="flex cursor-pointer items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-txt-muted hover:bg-surface-2 focus-visible:outline-2 focus-visible:outline-accent">
-          {compact ? <PanelLeftOpen size={18} className="shrink-0" /> : <PanelLeftClose size={18} className="shrink-0" />}<span className={compact ? 'sr-only' : undefined}>{compact ? '展开菜单' : '收起菜单'}</span>
-        </button>}
-      </div>
-    </>
-  )
+  const currentModule = APP_MODULES.find(module => module.to === location.pathname)
+  const title = currentModule?.label ?? '工作台'
+  const activeGroup = currentModule?.group
+  const groupLabel = NAV_GROUPS.find(group => group.id === activeGroup)?.label ?? '工作空间'
+  const syncLabel = !isCloudMode ? '本机空间' : SYNC_LABELS[syncStatus]
+  const navItem = ({ to, label, icon: Icon, shortcut }: AppModule, compact: boolean) => <NavLink
+    key={to} to={to} end={to === '/'} aria-keyshortcuts={shortcut} title={compact ? label : undefined}
+    onClick={event => {
+      if (event.ctrlKey || event.metaKey || event.shiftKey || event.altKey || event.button !== 0) return
+      event.preventDefault(); setMobileOpen(false)
+      if (prefersReducedMotion()) navigate(to)
+      else liquidNavigate(navigate, to, event)
+    }}
+    className={({ isActive }) => cn('group relative flex min-h-9 shrink-0 items-center gap-2.5 rounded-lg px-3 py-2 text-[13px] transition-colors focus-visible:outline-2 focus-visible:outline-accent', isActive ? 'bg-accent-soft font-medium text-accent' : 'text-txt-secondary hover:bg-surface-2 hover:text-txt-primary')}
+  ><Icon size={17} className="shrink-0" aria-hidden="true" /><span className={compact ? 'sr-only' : 'min-w-0 flex-1 truncate'}>{label}</span>{!compact && shortcut && <kbd aria-hidden="true" className="font-mono text-[10px] text-txt-muted opacity-60">{shortcut}</kbd>}</NavLink>
+  const sidebarContent = (compact: boolean, mobile = false) => <>
+    <div className="flex items-center gap-3 px-4 pt-5 pb-4"><div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-accent-soft text-accent"><Zap size={18} /></div>{!compact && <div className="min-w-0 flex-1"><p className="text-base font-bold tracking-[.16em] text-txt-primary">NEXUS</p><p className="mt-0.5 text-[10px] text-txt-muted">个人工作空间</p></div>}{mobile && <button type="button" onClick={() => setMobileOpen(false)} aria-label="关闭导航菜单" className="cursor-pointer rounded-lg p-2 text-txt-secondary hover:bg-surface-2"><X size={18} /></button>}</div>
+    <div className="px-3 pb-3"><button type="button" disabled={!user} onClick={() => { setMobileOpen(false); setPaletteOpen(true) }} title="搜索与命令面板 (Ctrl+K)" className={cn('flex h-9 w-full cursor-pointer items-center gap-2 rounded-lg border border-line-2 px-2.5 text-xs text-txt-secondary hover:border-accent focus-visible:outline-2 focus-visible:outline-accent disabled:opacity-50', compact && 'justify-center px-0')}><Search size={15} className="shrink-0" /><span className={compact ? 'sr-only' : 'flex-1 text-left'}>搜索工作空间</span>{!compact && <kbd className="text-[10px] text-txt-muted">Ctrl K</kbd>}</button></div>
+    <nav aria-label="主要导航" className="min-h-0 flex-1 overflow-y-auto px-2">
+      {NAV_GROUPS.map(group => {
+        const items = modulesForGroup(group.id)
+        const expanded = activeGroup === group.id || navigation.groups[group.id]
+        return <div key={group.id} role="group" aria-label={group.label} className="mb-3">
+          {!compact ? <button type="button" aria-expanded={expanded} aria-controls={`nav-${mobile ? 'mobile-' : ''}${group.id}`} title={activeGroup === group.id ? '当前页面所属分组保持展开' : undefined} disabled={activeGroup === group.id} onClick={() => updateNavigation({ ...navigation, groups: { ...navigation.groups, [group.id]: !navigation.groups[group.id] } })} className="flex w-full cursor-pointer items-center gap-2 px-3 py-2 text-[11px] font-medium text-txt-muted hover:text-txt-primary disabled:cursor-default"><span className="flex-1 text-left">{group.label}</span><span className="font-mono text-[10px] opacity-60">{items.length}</span><ChevronDown size={12} className={cn('transition-transform', !expanded && '-rotate-90')} /></button> : <div className="mx-3 my-2 border-t border-line-2" />}
+          {(compact || expanded) && <div id={`nav-${mobile ? 'mobile-' : ''}${group.id}`} className="flex flex-col gap-0.5">{items.map(item => navItem(item, compact))}</div>}
+        </div>
+      })}
+    </nav>
+    <div className="flex shrink-0 flex-col gap-1 border-t border-line-2 px-2 py-3">
+      {APP_MODULES.filter(item => item.group === 'system').sort((a, b) => Number(b.to === '/settings') - Number(a.to === '/settings')).map(item => navItem(item, compact))}
+      {isCloudMode && user && <button type="button" onClick={() => void handleSignOut()} title="退出登录" className="flex cursor-pointer items-center gap-2.5 rounded-lg px-3 py-2 text-[13px] text-txt-secondary hover:bg-surface-2 hover:text-danger"><LogOut size={17} className="shrink-0" /><span className={compact ? 'sr-only' : 'truncate'}>退出登录</span></button>}
+      {!mobile && <button type="button" onClick={() => updateNavigation({ ...navigation, collapsed: !collapsed })} aria-expanded={!compact} title={compact ? '展开菜单' : '收起菜单'} className="flex cursor-pointer items-center gap-2.5 rounded-lg px-3 py-2 text-[13px] text-txt-muted hover:bg-surface-2 focus-visible:outline-2 focus-visible:outline-accent">{compact ? <PanelLeftOpen size={17} className="shrink-0" /> : <PanelLeftClose size={17} className="shrink-0" />}<span className={compact ? 'sr-only' : undefined}>{compact ? '展开菜单' : '收起菜单'}</span></button>}
+    </div>
+  </>
 
   return (
-    <div className="flex h-full">
+    <div className="workbench-shell flex h-full">
       <a href="#main-content" className="sr-only fixed top-2 left-2 z-[100] rounded-lg bg-ink-900 px-4 py-3 text-accent focus:not-sr-only">跳到主要内容</a>
       <aside className={cn('hidden shrink-0 flex-col border-r border-line-1 bg-ink-900/60 backdrop-blur-xl transition-[width] duration-200 motion-reduce:transition-none md:flex', collapsed ? 'w-[68px]' : 'w-[220px]')}>
         {sidebarContent(collapsed)}
@@ -253,16 +241,17 @@ export function AppLayout() {
         <header className="flex h-14 shrink-0 items-center justify-between gap-3 border-b border-line-1 px-4 backdrop-blur-xl sm:px-6">
           <div className="flex min-w-0 items-center gap-2">
             <button type="button" onClick={() => setMobileOpen(true)} aria-label="打开导航菜单" aria-controls="mobile-navigation" aria-expanded={mobileOpen} className="shrink-0 cursor-pointer rounded-lg p-2 text-txt-secondary hover:bg-surface-2 focus-visible:outline-2 focus-visible:outline-accent md:hidden"><Menu size={20} /></button>
-            <h1 className="truncate text-sm font-semibold tracking-wider text-txt-secondary">{title}</h1>
+            <span className="hidden shrink-0 text-xs text-txt-muted sm:inline">{groupLabel}<span className="mx-2 opacity-40">/</span></span><h1 className="truncate text-sm font-semibold text-txt-primary">{title}</h1>
           </div>
           <div className="flex shrink-0 items-center gap-2 sm:gap-3">
+            {user && <button type="button" onClick={() => { requestAction('new-task'); navigate('/tasks') }} className="hidden h-9 cursor-pointer items-center gap-1.5 rounded-lg border border-line-2 px-3 text-xs text-txt-secondary hover:border-accent lg:inline-flex"><Plus size={14} />新建任务</button>}
             <CalmModeToggle />
             <button
               type="button"
               onClick={(e) => {
                 const next = theme === 'light' ? 'dark' : 'light'
                 const doc = document as Document & { startViewTransition?: (cb: () => void) => { ready: Promise<void> } }
-                if (!doc.startViewTransition || window.matchMedia('(prefers-reduced-motion: reduce)').matches) { setTheme(next); return }
+                if (!doc.startViewTransition || prefersReducedMotion()) { setTheme(next); return }
                 const x = e.clientX
                 const y = e.clientY
                 const transition = doc.startViewTransition(() => setTheme(next))
@@ -277,16 +266,16 @@ export function AppLayout() {
             >
               {theme === 'light' ? <Moon size={16} /> : <Sun size={16} />}
             </button>
-            <button type="button" onClick={() => setPaletteOpen(true)} aria-label="搜索与命令面板" className="flex cursor-pointer items-center gap-2 rounded-xl border border-line-2 bg-surface-1 p-2 text-xs text-txt-muted hover:border-accent hover:text-txt-secondary focus-visible:outline-2 focus-visible:outline-accent md:px-3">
+            <button type="button" disabled={!user} onClick={() => setPaletteOpen(true)} aria-label="搜索与命令面板" className="flex cursor-pointer items-center gap-2 rounded-xl border border-line-2 bg-surface-1 p-2 text-xs text-txt-muted hover:border-accent hover:text-txt-secondary focus-visible:outline-2 focus-visible:outline-accent md:px-3">
               <Search size={16} /><span className="hidden md:inline">搜索一切…</span><kbd className="hidden rounded-md border border-line-3 bg-surface-2 px-1.5 py-0.5 font-mono text-[10px] md:inline">Ctrl K</kbd>
             </button>
-            <span title={isCloudMode ? '云端同步模式' : '数据保存在本机浏览器'} className={cn('inline-flex items-center gap-1.5 rounded-full border px-2 py-1.5 text-[11px] sm:px-2.5 sm:py-1', isCloudMode ? 'border-accent bg-accent-soft text-accent' : 'border-slate-400/25 bg-slate-400/10 text-txt-secondary')}>
-              {isCloudMode ? <Cloud size={12} /> : <HardDrive size={12} />}<span className="sr-only sm:not-sr-only">{isCloudMode ? '云端同步' : '本地模式'}</span>
-            </span>
-            <Clock />
+            <Link to="/settings" aria-label={`存储与同步：${syncLabel}`} title="打开设置与同步" className={cn('inline-flex h-9 items-center gap-1.5 rounded-lg border px-2 text-[11px] sm:px-2.5', syncStatus === 'error' || syncStatus === 'offline' ? 'border-warn/30 text-warn' : 'border-line-2 text-txt-secondary hover:border-accent')}>
+              {isCloudMode ? <Cloud size={14} /> : <HardDrive size={14} />}<span className="sr-only sm:not-sr-only">{syncLabel}</span>
+            </Link>
             {isCloudMode && user?.email && <span className="hidden max-w-40 truncate text-xs text-txt-secondary lg:inline">{user.email}</span>}
           </div>
         </header>
+        {(syncStatus === 'error' || syncStatus === 'offline') && syncMessage && location.pathname !== '/settings' && <div role="alert" className="flex shrink-0 flex-wrap items-center gap-2 border-b border-warn/25 bg-warn/10 px-4 py-2 text-xs leading-5 text-txt-secondary sm:px-6"><p className="min-w-0 flex-1">{syncMessage}</p><Link to="/settings" className="shrink-0 text-accent hover:underline">检查连接</Link></div>}
 
         {/* 到期提醒:逾期/今日到期任务,每次会话提醒一次(Todoist 式温和提示) */}
         {(() => {
@@ -314,7 +303,7 @@ export function AppLayout() {
               <button
                 onClick={() => {
                   setDueDismissed(true)
-                  sessionStorage.setItem('nexus-due-dismissed', '1')
+                  try { sessionStorage.setItem('nexus-due-dismissed', '1') } catch { /* 当前页面已隐藏提醒。 */ }
                 }}
                 className="ml-auto cursor-pointer text-txt-muted transition-colors hover:text-txt-secondary"
                 title="本次会话不再提醒"
@@ -330,7 +319,9 @@ export function AppLayout() {
 
         <main ref={mainRef} id="main-content" tabIndex={-1} className="min-h-0 flex-1 overflow-y-auto focus:outline-none">
           {/* 圣域展厅:全出血电影感布局,自己管理滚动 */}
-          {location.pathname === '/sanctuary' ? (
+          {isCloudMode && !lastSyncedAt && (syncStatus === 'error' || syncStatus === 'offline') && location.pathname !== '/settings' ? (
+            <div className="mx-auto max-w-lg p-6 sm:pt-16"><div className="workspace-panel p-6"><h2 className="text-lg font-semibold text-txt-primary">暂时无法载入云端空间</h2><p className="mt-3 text-sm leading-6 text-txt-secondary">{syncMessage ?? '请检查网络、登录账号及数据表配置。'}</p><div className="mt-5 flex flex-wrap gap-3"><button type="button" disabled={refreshing} onClick={() => void refreshCloudData().catch(() => {})} className="inline-flex cursor-pointer items-center gap-2 rounded-lg border border-line-3 px-3 py-2 text-sm text-accent disabled:opacity-50"><RefreshCw size={14} className={refreshing ? 'animate-spin' : ''} />重新载入</button><Link to="/settings" className="inline-flex items-center rounded-lg px-3 py-2 text-sm text-accent hover:bg-surface-2">打开设置与同步</Link></div></div></div>
+          ) : location.pathname === '/sanctuary' ? (
             <Outlet />
           ) : (
             <div className="mx-auto max-w-7xl p-4 sm:p-6">
@@ -340,10 +331,10 @@ export function AppLayout() {
         </main>
       </div>
 
-      <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} />
-      <QuickCapture open={quickOpen} onClose={() => setQuickOpen(false)} />
-      <QuickCaptureFab onClick={() => setQuickOpen(true)} />
-      <OnboardingModal />
+      {user && <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} />}
+      {user && <QuickCapture open={quickOpen} onClose={() => setQuickOpen(false)} />}
+      {user && <QuickCaptureFab onClick={() => setQuickOpen(true)} />}
+      {ready && user && location.pathname !== '/settings' && <OnboardingModal />}
       <AssistantPanel
         open={assistantOpen}
         onClose={() => setAssistantOpen(false)}

@@ -12,7 +12,7 @@
 
   --color-txt-primary: #e2e8f0;
   --color-txt-secondary: #94a3b8;
-  --color-txt-muted: #64748b;
+  --color-txt-muted: #8392a8;
 
   /* 语义面:中性玻璃面与描边(两套主题共用 token 名) */
   --color-surface-1: rgba(255, 255, 255, 0.04);
@@ -58,7 +58,7 @@
 html.light {
   --color-txt-primary: #0f172a;
   --color-txt-secondary: #475569;
-  --color-txt-muted: #8a94a6;
+  --color-txt-muted: #626f83;
 
   --color-ink-950: #eef2f7;
   --color-ink-900: #ffffff;
@@ -459,3 +459,10 @@ html.nexus-calm .spotlight-card::before, html.nexus-calm .btn-shine::after,
 html.nexus-calm .nexus-beam, html.nexus-calm .nexus-ripple, html.nexus-calm .nexus-bubble {
   display: none !important;
 }
+
+/* 工作区保持海洋青色识别，以稳定实面组织长时间操作。 */
+.workspace-panel { background: var(--color-ink-900); border: 1px solid var(--color-line-2); border-radius: 1rem; }
+.workspace-kicker { color: var(--color-accent); font-size: .65rem; font-weight: 600; letter-spacing: .16em; }
+.workspace-title { margin-top: .5rem; font-size: clamp(1.65rem, 2.5vw, 2.1rem); line-height: 1.2; font-weight: 650; letter-spacing: -.03em; color: var(--color-txt-primary); }
+.workspace-description { margin-top: .65rem; color: var(--color-txt-secondary); font-size: .875rem; line-height: 1.75; }
+.workbench-shell { background: color-mix(in srgb, var(--color-ink-950) 94%, transparent); }

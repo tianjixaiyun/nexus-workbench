@@ -1,3 +1,4 @@
+import { createStoreFetchGuard, insertCreatedById, reportStoreReadError } from './storeConcurrency'
 import { create } from 'zustand'
 import { dataAdapter } from '@/lib/data'
 import type { Milestone, NewMilestone } from '@/lib/data/types'
@@ -12,23 +13,30 @@ interface MilestoneState {
   reset: () => void
 }
 
+const fetchGuard = createStoreFetchGuard()
+
 export const useMilestoneStore = create<MilestoneState>((set, get) => ({
   milestones: [],
   loaded: false,
 
   async fetch() {
+    const request = fetchGuard.begin(get().milestones, () => get().milestones)
     try {
-      const milestones = await dataAdapter.milestones.list()
-      set({ milestones, loaded: true })
-    } catch (err) {
-      console.error('加载倒数日失败:', err)
-      set({ milestones: [], loaded: true })
+      request.assertReady()
+      const rows = await dataAdapter.milestones.list()
+      if (!request.isCurrent()) return
+      // 并发更新或受控云端刷新已换过数组时，保留较新的界面记录。
+      set(request.canReplaceRows() ? { milestones: rows, loaded: true } : { loaded: true })
+    } catch (error) {
+      if (!request.isCurrent()) return
+      set({ loaded: true })
+      reportStoreReadError('倒数日', error)
     }
   },
 
   async add(input) {
     const milestone = await dataAdapter.milestones.create(input)
-    set({ milestones: [...get().milestones, milestone] })
+    set({ milestones: insertCreatedById(get().milestones, milestone) })
   },
 
   async update(id, patch) {
@@ -42,6 +50,7 @@ export const useMilestoneStore = create<MilestoneState>((set, get) => ({
   },
 
   reset() {
+    fetchGuard.reset()
     set({ milestones: [], loaded: false })
   },
 }))

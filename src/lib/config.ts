@@ -1,14 +1,26 @@
 import { createClient, type SupabaseClient } from '@supabase/supabase-js'
+import { readCloudConnection, validateCloudConnection, type CloudConnection, type ConnectionConfig } from './cloudConnection'
 
-/**
- * 运行模式:
- * - 云端模式:在 .env 配置了 Supabase 地址与密钥,数据存云端,需要登录
- * - 本地模式(默认):零配置,数据存浏览器 IndexedDB
- */
-export const isCloudMode = Boolean(
-  import.meta.env.VITE_SUPABASE_URL && import.meta.env.VITE_SUPABASE_ANON_KEY,
-)
+let selected: ConnectionConfig | null = null
+let source: 'browser' | 'environment' | 'local' = 'local'
+let error: string | null = null
+try {
+  selected = readCloudConnection()
+  if (selected) source = 'browser'
+  else {
+    const url = import.meta.env.VITE_SUPABASE_URL
+    const publicKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || import.meta.env.VITE_SUPABASE_ANON_KEY
+    if (url || publicKey) {
+      selected = validateCloudConnection({ url: url ?? '', publicKey: publicKey ?? '' })
+      source = 'environment'
+    }
+  }
+} catch (cause) { error = cause instanceof Error ? cause.message : '无法读取云端连接配置' }
 
-export const supabase: SupabaseClient | null = isCloudMode
-  ? createClient(import.meta.env.VITE_SUPABASE_URL!, import.meta.env.VITE_SUPABASE_ANON_KEY!)
+export const connectionSource = source
+export const connectionError = error
+export const activeCloudConnection: Readonly<CloudConnection> | null = selected?.mode === 'cloud' ? Object.freeze(selected) : null
+export const isCloudMode = activeCloudConnection !== null
+export const supabase: SupabaseClient | null = activeCloudConnection
+  ? createClient(activeCloudConnection.url, activeCloudConnection.publicKey)
   : null

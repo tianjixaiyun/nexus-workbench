@@ -1,6 +1,7 @@
 import { Suspense, lazy } from 'react'
 import { BrowserRouter, Route, Routes } from 'react-router'
 import { AppLayout } from '@/layouts/AppLayout'
+import { AuthRuntime } from '@/components/AuthRuntime'
 import { FocusRuntime } from '@/components/FocusRuntime'
 import { BackupImportDialog } from '@/components/BackupImportDialog'
 import { KonamiEgg } from '@/components/fx/KonamiEgg'
@@ -34,6 +35,7 @@ const ExpensePage = lazy(() => import('@/pages/ExpensePage'))
 const ContactsPage = lazy(() => import('@/pages/ContactsPage'))
 const JournalPage = lazy(() => import('@/pages/JournalPage'))
 const AboutPage = lazy(() => import('@/pages/AboutPage'))
+const SettingsPage = lazy(() => import('@/pages/SettingsPage'))
 const NotFoundPage = lazy(() => import('@/pages/NotFoundPage'))
 // 海洋首页同样按需:three.js 只在真正访问首页时加载(下潜序幕会盖住加载期)
 const LandingPage = lazy(() => import('@/pages/LandingPage'))
@@ -63,7 +65,8 @@ function PageFallback() {
 
 export default function App() {
   return (
-    <BrowserRouter basename={import.meta.env.PROD ? '/nexus-workbench' : '/'}>
+    <BrowserRouter basename={import.meta.env.BASE_URL.replace(/\/$/, '') || '/'}>
+      <AuthRuntime />
       <FocusRuntime />
       <BackupImportDialog />
       <GlobalRipple />
@@ -102,6 +105,7 @@ export default function App() {
           <Route path="expense" element={<Suspense fallback={<PageFallback />}><ExpensePage /></Suspense>} />
           <Route path="contacts" element={<Suspense fallback={<PageFallback />}><ContactsPage /></Suspense>} />
           <Route path="journal" element={<Suspense fallback={<PageFallback />}><JournalPage /></Suspense>} />
+          <Route path="settings" element={<Suspense fallback={<PageFallback />}><SettingsPage /></Suspense>} />
           <Route path="about" element={<Suspense fallback={<PageFallback />}><AboutPage /></Suspense>} />
         </Route>
         {/* 深海 404:未知路由不再静默跳转 */}

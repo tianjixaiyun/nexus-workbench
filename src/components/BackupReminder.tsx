@@ -27,7 +27,7 @@ export function BackupReminder() {
   const navigate = useNavigate()
   const lastExportAt = useSettingsStore((s) => s.lastExportAt)
   const firstOpenedAt = useSettingsStore((s) => s.firstOpenedAt)
-  const [dismissed, setDismissed] = useState(() => sessionStorage.getItem(DISMISS_KEY) === '1')
+  const [dismissed, setDismissed] = useState(() => { try { return sessionStorage.getItem(DISMISS_KEY) === '1' } catch { return false } })
   const [exporting, setExporting] = useState(false)
 
   // 库里是否还有任何数据:空库不提醒(钩子顺序固定,数量可忽略)
@@ -79,7 +79,7 @@ export function BackupReminder() {
       <button
         onClick={() => {
           setDismissed(true)
-          sessionStorage.setItem(DISMISS_KEY, '1')
+          try { sessionStorage.setItem(DISMISS_KEY, '1') } catch { /* 当前页面已关闭提醒。 */ }
         }}
         className="ml-auto cursor-pointer text-txt-muted transition-colors hover:text-txt-secondary"
         title="本次会话不再提醒"

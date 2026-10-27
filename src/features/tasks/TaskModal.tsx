@@ -1,12 +1,13 @@
-import { useLayoutEffect, useState, type FormEvent } from 'react'
+import { useLayoutEffect, useRef, useState, type FormEvent } from 'react'
 import { useNavigate } from 'react-router'
 import { focusContextHref } from '@/lib/contextLinks'
 import { taskInitialTags } from './taskFilters'
+import { createTaskDraft, shouldInitializeTaskDraft, taskDraftConflict, type TaskDraft } from './taskDraft'
 import { Check, Play, Plus, X } from 'lucide-react'
 import { Modal } from '@/components/ui/Modal'
 import { Button } from '@/components/ui/Button'
 import { Input, Select, Textarea } from '@/components/ui/Input'
-import type { Subtask, Task, TaskPriority, TaskRecurrence, TaskStatus } from '@/lib/data/types'
+import type { Task, TaskPriority, TaskRecurrence, TaskStatus } from '@/lib/data/types'
 import { TASK_PRIORITIES, TASK_RECURRENCES, TASK_STATUSES } from '@/lib/data/types'
 import { cn, uid } from '@/lib/utils'
 import { parseNaturalLanguage } from '@/lib/nlp'
@@ -22,18 +23,11 @@ interface TaskModalProps {
   /** 新建模式的预设截止日期(日历点某天新建) */
   defaultDueDate?: string
   defaultTag?: string
+  /** An already-open target disappeared during a refresh; keep its draft readable. */
+  unavailable?: boolean
 }
 
-interface FormState {
-  title: string
-  description: string
-  status: TaskStatus
-  priority: TaskPriority
-  dueDate: string
-  recurrence: TaskRecurrence
-  tags: string[]
-  subtasks: Subtask[]
-}
+type FormState = TaskDraft
 
 const emptyForm: FormState = {
   title: '',
@@ -46,7 +40,7 @@ const emptyForm: FormState = {
   subtasks: [],
 }
 
-export function TaskModal({ open, onClose, task, defaultStatus = 'todo', defaultDueDate, defaultTag }: TaskModalProps) {
+export function TaskModal({ open, onClose, task, defaultStatus = 'todo', defaultDueDate, defaultTag, unavailable = false }: TaskModalProps) {
   const [form, setForm] = useState<FormState>(emptyForm)
   const navigate = useNavigate()
   const [saving, setSaving] = useState(false)
@@ -54,31 +48,45 @@ export function TaskModal({ open, onClose, task, defaultStatus = 'todo', default
   const [tagInput, setTagInput] = useState('')
   const [subtaskInput, setSubtaskInput] = useState('')
   const [nlHint, setNlHint] = useState<string[]>([])
-  const { add, update } = useTaskStore()
+  const { add, update, tasks, loaded } = useTaskStore()
+  const cycle = useRef({ open: false, taskId: null as string | null })
+  const baselineTask = useRef<Task | null>(null)
+  const initialDraft = useRef(JSON.stringify(emptyForm))
+  const [discardPrompt, setDiscardPrompt] = useState(false)
 
   useLayoutEffect(() => {
-    if (!open) return
+    const nextCycle = { open, taskId: task?.id ?? null }
+    const initialize = shouldInitializeTaskDraft(cycle.current, nextCycle)
+    cycle.current = nextCycle
+    if (!initialize) return
     setError('')
+    setDiscardPrompt(false)
     setTagInput('')
     setSubtaskInput('')
     setNlHint([])
-    if (task) {
-      setForm({
-        title: task.title,
-        description: task.description,
-        status: task.status,
-        priority: task.priority,
-        dueDate: task.dueDate ?? '',
-        recurrence: task.recurrence ?? 'none',
-        tags: taskInitialTags(task, defaultTag),
-        subtasks: task.subtasks.map((s) => ({ ...s })),
-      })
-    } else {
-      setForm({ ...emptyForm, status: defaultStatus, dueDate: defaultDueDate ?? '', tags: taskInitialTags(null, defaultTag) })
-    }
+    const nextForm = task ? createTaskDraft(task) : { ...emptyForm, status: defaultStatus, dueDate: defaultDueDate ?? '', tags: taskInitialTags(null, defaultTag), subtasks: [] }
+    baselineTask.current = task ?? null
+    initialDraft.current = JSON.stringify(nextForm)
+    setForm(nextForm)
   }, [open, task, defaultStatus, defaultDueDate, defaultTag])
 
   const patch = (p: Partial<FormState>) => setForm((f) => ({ ...f, ...p }))
+  const conflict = task && baselineTask.current
+    ? unavailable ? 'missing' : loaded ? taskDraftConflict(baselineTask.current, tasks.find(item => item.id === task.id)) : null
+    : null
+  const cannotSave = conflict === 'missing' || conflict === 'deleted'
+  const dirty = JSON.stringify(form) !== initialDraft.current || Boolean(tagInput.trim()) || Boolean(subtaskInput.trim())
+  const requestClose = () => {
+    if (saving) return
+    if (dirty) setDiscardPrompt(true)
+    else onClose()
+  }
+  const copyDraft = async () => {
+    try {
+      await navigator.clipboard.writeText(JSON.stringify(form, null, 2))
+      setError('草稿已复制，可粘贴到便签或其他安全位置。')
+    } catch { setError('无法自动复制，可在当前表单中选择并复制填写内容。') }
+  }
 
   const addTag = () => {
     const tag = tagInput.trim().replace(/^#/, '')
@@ -97,6 +105,13 @@ export function TaskModal({ open, onClose, task, defaultStatus = 'todo', default
     e.preventDefault()
     const title = form.title.trim()
     if (!title || saving) return
+    if (task) {
+      const latest = useTaskStore.getState().tasks.find(item => item.id === task.id)
+      if (unavailable || !latest || latest.deletedAt) {
+        setError('这项任务已删除或暂时不可用，草稿已保留；请复制草稿后关闭核对。')
+        return
+      }
+    }
     const payload = {
       title,
       description: form.description.trim(),
@@ -123,8 +138,11 @@ export function TaskModal({ open, onClose, task, defaultStatus = 'todo', default
   const doneSubtasks = form.subtasks.filter((s) => s.done).length
 
   return (
-    <Modal open={open} onClose={() => { if (!saving) onClose() }} title={task ? '编辑任务' : '新建任务'} className="max-w-xl">
+    <Modal open={open} onClose={requestClose} title={task ? '编辑任务' : '新建任务'} className="max-w-xl">
       <form onSubmit={handleSubmit} aria-busy={saving} className="flex flex-col gap-4">
+        {discardPrompt && <div role="alert" className="rounded-xl border border-warn/40 bg-warn/10 p-3 text-sm text-txt-secondary"><p>还有未保存的填写内容，确定放弃并关闭吗？</p><div className="mt-2 flex flex-wrap gap-2"><Button type="button" size="sm" variant="outline" onClick={() => setDiscardPrompt(false)}>继续编辑</Button><Button type="button" size="sm" variant="danger" onClick={onClose}>放弃并关闭</Button></div></div>}
+        {conflict === 'changed' && <p role="status" className="rounded-xl border border-warn/40 bg-warn/10 p-3 text-xs leading-relaxed text-txt-secondary">任务在其他位置有更新，当前草稿已保留。保存会使用你现在填写的内容；关闭后重新打开可查看最新版本。</p>}
+        {cannotSave && <div role="alert" className="rounded-xl border border-danger/40 p-3 text-xs leading-relaxed text-txt-secondary"><p>这项任务已删除或暂时不可用。草稿仍在这里，无法覆盖保存；请复制后关闭核对。</p><Button type="button" size="sm" variant="outline" className="mt-2" onClick={() => void copyDraft()}>复制草稿</Button></div>}
         <div>
           <label className="mb-1.5 block text-xs text-txt-secondary">标题 *</label>
           <Input
@@ -299,11 +317,11 @@ export function TaskModal({ open, onClose, task, defaultStatus = 'todo', default
 
         {error && <p role="alert" className="text-sm text-danger">{error}</p>}
         <div className="mt-1 flex flex-wrap justify-end gap-2">
-          {task && form.status !== 'done' && <Button type="submit" data-focus="true" variant="outline" disabled={saving || !form.title.trim()}><Play size={14} />保存并去专注</Button>}
-          <Button type="button" variant="outline" onClick={onClose} disabled={saving}>
+          {task && form.status !== 'done' && <Button type="submit" data-focus="true" variant="outline" disabled={saving || cannotSave || !form.title.trim()}><Play size={14} />保存并去专注</Button>}
+          <Button type="button" variant="outline" onClick={requestClose} disabled={saving}>
             取消
           </Button>
-          <Button type="submit" variant="primary" disabled={saving || !form.title.trim()}>
+          <Button type="submit" variant="primary" disabled={saving || cannotSave || !form.title.trim()}>
             {saving ? '保存中…' : task ? '保存' : '创建'}
           </Button>
         </div>

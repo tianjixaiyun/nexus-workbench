@@ -1,3 +1,4 @@
+import { createStoreFetchGuard, insertCreatedById, reportStoreReadError } from './storeConcurrency'
 import { create } from 'zustand'
 import { dataAdapter } from '@/lib/data'
 import type { Expense, NewExpense } from '@/lib/data/types'
@@ -12,23 +13,30 @@ interface ExpenseState {
   reset: () => void
 }
 
+const fetchGuard = createStoreFetchGuard()
+
 export const useExpenseStore = create<ExpenseState>((set, get) => ({
   expenses: [],
   loaded: false,
 
   async fetch() {
+    const request = fetchGuard.begin(get().expenses, () => get().expenses)
     try {
-      const expenses = await dataAdapter.expenses.list()
-      set({ expenses, loaded: true })
-    } catch (err) {
-      console.error('加载记账失败:', err)
-      set({ expenses: [], loaded: true })
+      request.assertReady()
+      const rows = await dataAdapter.expenses.list()
+      if (!request.isCurrent()) return
+      // 并发更新或受控云端刷新已换过数组时，保留较新的界面记录。
+      set(request.canReplaceRows() ? { expenses: rows, loaded: true } : { loaded: true })
+    } catch (error) {
+      if (!request.isCurrent()) return
+      set({ loaded: true })
+      reportStoreReadError('记账', error)
     }
   },
 
   async add(input) {
     const e = await dataAdapter.expenses.create(input)
-    set({ expenses: [e, ...get().expenses] })
+    set({ expenses: insertCreatedById(get().expenses, e, true) })
   },
 
   async update(id, patch) {
@@ -42,6 +50,7 @@ export const useExpenseStore = create<ExpenseState>((set, get) => ({
   },
 
   reset() {
+    fetchGuard.reset()
     set({ expenses: [], loaded: false })
   },
 }))

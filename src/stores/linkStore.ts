@@ -1,3 +1,4 @@
+import { createStoreFetchGuard, insertCreatedById, reportStoreReadError } from './storeConcurrency'
 import { create } from 'zustand'
 import { dataAdapter } from '@/lib/data'
 import type { LinkItem, NewLink } from '@/lib/data/types'
@@ -12,23 +13,30 @@ interface LinkState {
   reset: () => void
 }
 
+const fetchGuard = createStoreFetchGuard()
+
 export const useLinkStore = create<LinkState>((set, get) => ({
   links: [],
   loaded: false,
 
   async fetch() {
+    const request = fetchGuard.begin(get().links, () => get().links)
     try {
-      const links = await dataAdapter.links.list()
-      set({ links, loaded: true })
-    } catch (err) {
-      console.error('加载链接失败:', err)
-      set({ links: [], loaded: true })
+      request.assertReady()
+      const rows = await dataAdapter.links.list()
+      if (!request.isCurrent()) return
+      // 并发更新或受控云端刷新已换过数组时，保留较新的界面记录。
+      set(request.canReplaceRows() ? { links: rows, loaded: true } : { loaded: true })
+    } catch (error) {
+      if (!request.isCurrent()) return
+      set({ loaded: true })
+      reportStoreReadError('书签', error)
     }
   },
 
   async add(input) {
     const link = await dataAdapter.links.create(input)
-    set({ links: [...get().links, link] })
+    set({ links: insertCreatedById(get().links, link) })
   },
 
   async update(id, patch) {
@@ -42,6 +50,7 @@ export const useLinkStore = create<LinkState>((set, get) => ({
   },
 
   reset() {
+    fetchGuard.reset()
     set({ links: [], loaded: false })
   },
 }))

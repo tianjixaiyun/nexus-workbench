@@ -1,6 +1,7 @@
 import { expect, it, vi } from 'vitest'
 const mock = vi.hoisted(() => ({ owner: 'account-a', inserted: null as null | Record<string, unknown> }))
 vi.mock('../src/lib/config', () => ({
+  isCloudMode: true,
   supabase: {
     auth: { getSession: async () => ({ data: { session: { user: { id: mock.owner } } }, error: null }) },
     from: () => ({ insert: (row: Record<string, unknown>) => { mock.inserted = row; return { select: () => ({ single: async () => ({ data: { ...row, created_at: '2026-10-27T00:00:00Z' }, error: null }) }) } } }),

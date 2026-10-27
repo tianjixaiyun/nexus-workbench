@@ -26,6 +26,8 @@ import type {
 import { supabase } from '../config'
 import { uid } from '../utils'
 import { BACKUP_IMPORT_USER } from '../backupImport'
+import { useSyncStore } from '@/stores/syncStore'
+import { toast } from '@/stores/toastStore'
 
 /**
  * Supabase 云端实现。
@@ -43,6 +45,22 @@ async function requireUserId(): Promise<string> {
   return id
 }
 
+async function assertSameAccount(owner: string): Promise<void> {
+  let current: string | null = null
+  try { current = await requireUserId() } catch { /* 会话退出也视为账号变化。 */ }
+  if (current !== owner) throw new Error('账号已变化，已停止显示本次结果；如刚提交过修改，请切回原账号核对操作结果。')
+}
+
+async function reportCloudWrite<T>(write: () => Promise<T>): Promise<T> {
+  try { return await write() }
+  catch (error) {
+    const detail = error && typeof error === 'object' && 'message' in error ? String(error.message) : '网络或账号连接失败，请核对后重试。'
+    useSyncStore.setState({ status: 'error', message: detail })
+    toast.error('云端操作未确认', detail)
+    throw error
+  }
+}
+
 function makeCloudStore<T, New>(
   table: string,
   orderColumn: string,
@@ -58,37 +76,46 @@ function makeCloudStore<T, New>(
         .eq('user_id', userId)
         .order(orderColumn, { ascending: true })
       if (error) throw error
+      await assertSameAccount(userId)
       return (data ?? []).map(fromRow)
     },
     async create(item: New) {
-      const userId = await requireUserId()
-      const expected = (item as New & { [BACKUP_IMPORT_USER]?: string })[BACKUP_IMPORT_USER]
-      if (expected && expected !== userId) throw new Error('导入账号已变化，已停止发送写入请求')
-      const { data, error } = await supabase!
-        .from(table)
-        .insert({ ...toColumns(item as Partial<T>), id: uid(), user_id: userId })
-        .select()
-        .single()
-      if (error) throw error
-      return fromRow(data as Row)
+      return reportCloudWrite(async () => {
+        const userId = await requireUserId()
+        const expected = (item as New & { [BACKUP_IMPORT_USER]?: string })[BACKUP_IMPORT_USER]
+        if (expected && expected !== userId) throw new Error('导入账号已变化，已停止发送写入请求')
+        const { data, error } = await supabase!
+          .from(table)
+          .insert({ ...toColumns(item as Partial<T>), id: uid(), user_id: userId })
+          .select()
+          .single()
+        if (error) throw error
+        await assertSameAccount(userId)
+        return fromRow(data as Row)
+      })
     },
     async update(id, patch) {
-      const userId = await requireUserId()
-      // undefined 字段会被 JSON 序列化丢弃,只更新传入的列;updated_at 由数据库触发器维护
-      const { data, error } = await supabase!
-        .from(table)
-        .update(toColumns(patch))
-        .eq('id', id)
-        .eq('user_id', userId)
-        .select()
-        .single()
-      if (error) throw error
-      return fromRow(data as Row)
+      return reportCloudWrite(async () => {
+        const userId = await requireUserId()
+        const { data, error } = await supabase!
+          .from(table)
+          .update(toColumns(patch))
+          .eq('id', id)
+          .eq('user_id', userId)
+          .select()
+          .single()
+        if (error) throw error
+        await assertSameAccount(userId)
+        return fromRow(data as Row)
+      })
     },
     async remove(id) {
-      const userId = await requireUserId()
-      const { error } = await supabase!.from(table).delete().eq('id', id).eq('user_id', userId)
-      if (error) throw error
+      return reportCloudWrite(async () => {
+        const userId = await requireUserId()
+        const { error } = await supabase!.from(table).delete().eq('id', id).eq('user_id', userId)
+        if (error) throw error
+        await assertSameAccount(userId)
+      })
     },
   }
 }

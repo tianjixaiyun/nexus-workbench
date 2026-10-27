@@ -1,3 +1,4 @@
+import { createStoreFetchGuard, insertCreatedById, reportStoreReadError } from './storeConcurrency'
 import { create } from 'zustand'
 import { dataAdapter } from '@/lib/data'
 import type { WorkItem, NewWork } from '@/lib/data/types'
@@ -12,23 +13,30 @@ interface WorkState {
   reset: () => void
 }
 
+const fetchGuard = createStoreFetchGuard()
+
 export const useWorkStore = create<WorkState>((set, get) => ({
   works: [],
   loaded: false,
 
   async fetch() {
+    const request = fetchGuard.begin(get().works, () => get().works)
     try {
-      const works = await dataAdapter.works.list()
-      set({ works, loaded: true })
-    } catch (err) {
-      console.error('加载作品失败:', err)
-      set({ works: [], loaded: true })
+      request.assertReady()
+      const rows = await dataAdapter.works.list()
+      if (!request.isCurrent()) return
+      // 并发更新或受控云端刷新已换过数组时，保留较新的界面记录。
+      set(request.canReplaceRows() ? { works: rows, loaded: true } : { loaded: true })
+    } catch (error) {
+      if (!request.isCurrent()) return
+      set({ loaded: true })
+      reportStoreReadError('作品', error)
     }
   },
 
   async add(input) {
     const work = await dataAdapter.works.create(input)
-    set({ works: [work, ...get().works] })
+    set({ works: insertCreatedById(get().works, work, true) })
   },
 
   async update(id, patch) {
@@ -42,6 +50,7 @@ export const useWorkStore = create<WorkState>((set, get) => ({
   },
 
   reset() {
+    fetchGuard.reset()
     set({ works: [], loaded: false })
   },
 }))

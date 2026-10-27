@@ -1,3 +1,4 @@
+import { createStoreFetchGuard, insertCreatedById, reportStoreReadError } from './storeConcurrency'
 import { create } from 'zustand'
 import { dataAdapter } from '@/lib/data'
 import type { Memo, NewMemo } from '@/lib/data/types'
@@ -12,23 +13,30 @@ interface MemoState {
   reset: () => void
 }
 
+const fetchGuard = createStoreFetchGuard()
+
 export const useMemoStore = create<MemoState>((set, get) => ({
   memos: [],
   loaded: false,
 
   async fetch() {
+    const request = fetchGuard.begin(get().memos, () => get().memos)
     try {
-      const memos = await dataAdapter.memos.list()
-      set({ memos, loaded: true })
-    } catch (err) {
-      console.error('加载碎碎念失败:', err)
-      set({ memos: [], loaded: true })
+      request.assertReady()
+      const rows = await dataAdapter.memos.list()
+      if (!request.isCurrent()) return
+      // 并发更新或受控云端刷新已换过数组时，保留较新的界面记录。
+      set(request.canReplaceRows() ? { memos: rows, loaded: true } : { loaded: true })
+    } catch (error) {
+      if (!request.isCurrent()) return
+      set({ loaded: true })
+      reportStoreReadError('碎碎念', error)
     }
   },
 
   async add(input) {
     const memo = await dataAdapter.memos.create(input)
-    set({ memos: [memo, ...get().memos] })
+    set({ memos: insertCreatedById(get().memos, memo, true) })
   },
 
   async update(id, patch) {
@@ -42,6 +50,7 @@ export const useMemoStore = create<MemoState>((set, get) => ({
   },
 
   reset() {
+    fetchGuard.reset()
     set({ memos: [], loaded: false })
   },
 }))

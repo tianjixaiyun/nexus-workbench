@@ -2,7 +2,7 @@ import { splashGold } from '@/components/fx/Burst'
 import { useState } from 'react'
 import { Link } from 'react-router'
 import { focusContextHref } from '@/lib/contextLinks'
-import { Calendar, Check, CheckCircle2, ListChecks, Pencil, Play, Search, Tag, Timer, Trash2 } from 'lucide-react'
+import { Calendar, Check, CheckCircle2, ListChecks, MoreHorizontal, Pencil, Play, Search, Tag, Timer, Trash2 } from 'lucide-react'
 import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
@@ -38,7 +38,7 @@ export function TaskList({ tasks, onEdit }: TaskListProps) {
       {error && <p role="alert" className="rounded-xl border border-danger/40 p-3 text-xs text-danger">{error}</p>}
       {/* 批量操作条 */}
       {bulkMode && (
-        <div className="flex items-center gap-2 rounded-xl border border-accent/30 bg-accent-soft/40 px-3 py-2">
+        <div className="flex flex-wrap items-center gap-2 rounded-xl border border-accent/30 bg-accent-soft/40 px-3 py-2">
           <span className="text-xs text-accent">已选 {selectedTasks.length} 项</span>
           <button
             onClick={() => void performAction(async () => {
@@ -46,7 +46,7 @@ export function TaskList({ tasks, onEdit }: TaskListProps) {
               setSelected(new Set())
             })}
             disabled={selectedTasks.length === 0}
-            className="cursor-pointer rounded-lg bg-accent px-3 py-1 text-xs text-white disabled:opacity-40"
+            className="min-h-8 cursor-pointer rounded-lg bg-accent px-3 py-1 text-xs text-white disabled:opacity-40"
           >
             批量完成
           </button>
@@ -59,11 +59,11 @@ export function TaskList({ tasks, onEdit }: TaskListProps) {
               })
             }}
             disabled={selectedTasks.length === 0}
-            className="cursor-pointer rounded-lg border border-danger/40 px-3 py-1 text-xs text-danger disabled:opacity-40"
+            className="min-h-8 cursor-pointer rounded-lg border border-danger/40 px-3 py-1 text-xs text-danger disabled:opacity-40"
           >
             批量删除
           </button>
-          <button onClick={() => { setBulkMode(false); setSelected(new Set()) }} className="ml-auto cursor-pointer text-xs text-txt-muted hover:text-txt-secondary">
+          <button onClick={() => { setBulkMode(false); setSelected(new Set()) }} className="ml-auto min-h-8 cursor-pointer text-xs text-txt-muted hover:text-txt-secondary">
             退出批量
           </button>
         </div>
@@ -77,16 +77,17 @@ export function TaskList({ tasks, onEdit }: TaskListProps) {
         <div className="flex flex-col gap-2">
           {tasks.map((task) => {
             const done = task.status === 'done'
+            const overdue = Boolean(task.dueDate && isOverdue(task.dueDate) && !done)
             return (
               <div
                 key={task.id}
                 onClick={() => { if (bulkMode) { setSelected((prev) => { const n = new Set(prev); if (n.has(task.id)) n.delete(task.id); else n.add(task.id); return n }) } else onEdit(task) }}
-                className={'glass-card glass-card-hover group flex cursor-pointer items-center gap-3 px-4 py-3' + (bulkMode && selected.has(task.id) ? ' border-accent/60 bg-accent-soft/25' : '')}
+                className={'glass-card glass-card-hover group relative flex cursor-pointer items-center gap-2 px-3 py-3 focus-within:z-30 sm:gap-3 sm:px-4' + (bulkMode && selected.has(task.id) ? ' border-accent/60 bg-accent-soft/25' : '')}
               >
                 {bulkMode && (
-                  <span className={'flex h-5 w-5 shrink-0 items-center justify-center rounded-md border ' + (selected.has(task.id) ? 'neon-gradient-bg border-transparent' : 'border-line-strong')}>
+                  <button type="button" aria-pressed={selected.has(task.id)} aria-label={`选择任务：${task.title}`} onClick={event => { event.stopPropagation(); setSelected(previous => { const next = new Set(previous); if (next.has(task.id)) next.delete(task.id); else next.add(task.id); return next }) }} className={'flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-md border focus-visible:outline-2 focus-visible:outline-accent ' + (selected.has(task.id) ? 'neon-gradient-bg border-transparent' : 'border-line-strong')}>
                     {selected.has(task.id) && <Check size={12} className="text-white" />}
-                  </span>
+                  </button>
                 )}
                 <button
                   onClick={(e) => {
@@ -98,7 +99,7 @@ export function TaskList({ tasks, onEdit }: TaskListProps) {
                     void performAction(() => toggleDone(task.id))
                   }}
                   className={cn(
-                    'flex h-5 w-5 shrink-0 cursor-pointer items-center justify-center rounded-full border transition-all',
+                    'flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-full border transition-all focus-visible:outline-2 focus-visible:outline-accent',
                     done ? 'neon-gradient-bg border-transparent' : 'border-line-strong hover:border-accent',
                   )}
                   aria-label={done ? '标记为未完成' : '标记为完成'}
@@ -108,6 +109,11 @@ export function TaskList({ tasks, onEdit }: TaskListProps) {
 
                 <div className="min-w-0 flex-1">
                   <p className={cn('truncate text-sm', done && 'text-txt-muted line-through')}>{task.title}</p>
+                  <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+                    <Badge tone={PRIORITY_META[task.priority].tone}>{PRIORITY_META[task.priority].label}优先级</Badge>
+                    <Badge tone={STATUS_META[task.status].tone}>{STATUS_META[task.status].label}</Badge>
+                    {task.dueDate && <Badge tone={overdue ? 'rose' : 'slate'}><Calendar size={10} />{overdue ? '已逾期 · ' : ''}{formatDate(task.dueDate)}</Badge>}
+                  </div>
                   {task.description && !done && (
                     <p className="mt-0.5 truncate text-xs text-txt-muted">{task.description}</p>
                   )}
@@ -131,9 +137,11 @@ export function TaskList({ tasks, onEdit }: TaskListProps) {
                             setExpandedId(expandedId === task.id ? null : task.id)
                           }}
                           className={cn(
-                            'inline-flex cursor-pointer items-center gap-1 text-[11px]',
+                            'inline-flex min-h-8 cursor-pointer items-center gap-1 rounded text-[11px] focus-visible:outline-2 focus-visible:outline-accent',
                             task.subtasks.every((s) => s.done) ? 'text-success' : 'text-accent',
                           )}
+                          aria-expanded={expandedId === task.id}
+                          aria-label={`${expandedId === task.id ? '收起' : '展开'}子任务：${task.title}`}
                         >
                           <ListChecks size={10} />
                           {task.subtasks.filter((s) => s.done).length}/{task.subtasks.length}
@@ -151,7 +159,7 @@ export function TaskList({ tasks, onEdit }: TaskListProps) {
                             e.stopPropagation()
                             void performAction(() => toggleSubtask(task.id, s.id))
                           }}
-                          className="flex cursor-pointer items-center gap-2 text-left"
+                          className="flex min-h-8 cursor-pointer items-center gap-2 rounded text-left focus-visible:outline-2 focus-visible:outline-accent"
                         >
                           <span
                             className={cn(
@@ -170,45 +178,14 @@ export function TaskList({ tasks, onEdit }: TaskListProps) {
                   )}
                 </div>
 
-                <div className="hidden items-center gap-1.5 sm:flex">
-                  <Badge tone={PRIORITY_META[task.priority].tone}>{PRIORITY_META[task.priority].label}</Badge>
-                  {task.status !== 'done' && (
-                    <Badge tone={STATUS_META[task.status].tone}>{STATUS_META[task.status].label}</Badge>
-                  )}
-                  {task.dueDate && (
-                    <Badge tone={isOverdue(task.dueDate) && !done ? 'rose' : 'slate'}>
-                      <Calendar size={10} />
-                      {formatDate(task.dueDate)}
-                    </Badge>
-                  )}
-                </div>
-
-                {!done && !bulkMode && <Link to={focusContextHref(task.id)} onClick={event => event.stopPropagation()} aria-label={`去专注：${task.title}`} title="带着这项任务进入专注，不会自动开始计时" className="flex shrink-0 items-center gap-1 rounded-lg border border-line-2 p-2 text-xs text-accent hover:bg-accent-soft focus-visible:outline-2 focus-visible:outline-accent"><Play size={13} /><span className="hidden md:inline">专注</span></Link>}
-                <div className="flex shrink-0 gap-1 sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100">
-                  <Button
-                    size="icon"
-                    className="h-7 w-7"
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      onEdit(task)
-                    }}
-                    aria-label="编辑"
-                  >
-                    <Pencil size={13} />
-                  </Button>
-                  <Button
-                    size="icon"
-                    variant="danger"
-                    className="h-7 w-7"
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      setDeleteId(task.id)
-                    }}
-                    aria-label="删除"
-                  >
-                    <Trash2 size={13} />
-                  </Button>
-                </div>
+                {!done && !bulkMode && <Link to={focusContextHref(task.id)} onClick={event => event.stopPropagation()} aria-label={`去专注：${task.title}`} title="带着这项任务进入专注，不会自动开始计时" className="flex min-h-8 min-w-8 shrink-0 items-center justify-center gap-1 rounded-lg border border-line-2 p-2 text-xs text-accent hover:bg-accent-soft focus-visible:outline-2 focus-visible:outline-accent"><Play size={13} /><span className="hidden md:inline">专注</span></Link>}
+                <details className="relative shrink-0" onClick={event => event.stopPropagation()} onKeyDown={event => { if (event.key === 'Escape') { event.currentTarget.removeAttribute('open'); event.currentTarget.querySelector('summary')?.focus() } }}>
+                  <summary aria-label={`更多操作：${task.title}`} className="flex h-8 w-8 cursor-pointer list-none items-center justify-center rounded-lg text-txt-secondary hover:bg-surface-3 focus-visible:outline-2 focus-visible:outline-accent"><MoreHorizontal size={18} /></summary>
+                  <div className="absolute top-full right-0 z-20 mt-1 min-w-36 rounded-xl border border-line-2 bg-ink-900 p-1 shadow-xl">
+                    <Button size="sm" className="w-full" onClick={event => { event.currentTarget.closest('details')?.removeAttribute('open'); onEdit(task) }}><Pencil size={13} />编辑任务</Button>
+                    <Button size="sm" variant="danger" className="w-full" onClick={event => { event.currentTarget.closest('details')?.removeAttribute('open'); setDeleteId(task.id) }}><Trash2 size={13} />移入回收站</Button>
+                  </div>
+                </details>
               </div>
             )
           })}

@@ -10,7 +10,7 @@ export function Textarea({ className = '', ...rest }: TextareaHTMLAttributes<HTM
 
 export function Select({ className = '', children, ...rest }: SelectHTMLAttributes<HTMLSelectElement>) {
   return (
-    <select className={`input-base cursor-pointer appearance-none pr-8 ${className}`} {...rest}>
+    <select className={`input-base cursor-pointer pr-3 ${className}`} {...rest}>
       {children}
     </select>
   )

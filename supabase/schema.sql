@@ -1,3 +1,13 @@
+create or replace function public.set_updated_at()
+returns trigger
+language plpgsql
+as $$
+begin
+  new.updated_at = now();
+  return new;
+end;
+$$;
+
 -- ============================================================
 -- NEXUS 工作台 · Supabase 建表脚本
 -- 使用方法:登录 Supabase → 打开你的项目 → SQL Editor →
@@ -16,7 +26,8 @@ create table if not exists memos (
   created_at timestamptz not null default now()
 );
 alter table memos enable row level security;
-create policy "memos 属于当前用户" on memos for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
+drop policy if exists "memos 属于当前用户" on memos;
+create policy "memos 属于当前用户" on memos for all to authenticated using (auth.uid() = user_id) with check (auth.uid() = user_id);
 
 -- 记账
 create table if not exists expenses (
@@ -30,14 +41,15 @@ create table if not exists expenses (
   created_at timestamptz not null default now()
 );
 alter table expenses enable row level security;
-create policy "expenses 属于当前用户" on expenses for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
+drop policy if exists "expenses 属于当前用户" on expenses;
+create policy "expenses 属于当前用户" on expenses for all to authenticated using (auth.uid() = user_id) with check (auth.uid() = user_id);
 
 do $$
 begin
-  if not exists (select 1 from pg_publication_tables where publication_name = 'supabase_realtime' and tablename = 'memos') then
+  if not exists (select 1 from pg_publication_tables where pubname = 'supabase_realtime' and tablename = 'memos') then
     alter publication supabase_realtime add table memos;
   end if;
-  if not exists (select 1 from pg_publication_tables where publication_name = 'supabase_realtime' and tablename = 'expenses') then
+  if not exists (select 1 from pg_publication_tables where pubname = 'supabase_realtime' and tablename = 'expenses') then
     alter publication supabase_realtime add table expenses;
   end if;
 end $$;
@@ -55,10 +67,11 @@ create table if not exists works (
 );
 
 alter table works enable row level security;
-create policy "works 属于当前用户" on works for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
+drop policy if exists "works 属于当前用户" on works;
+create policy "works 属于当前用户" on works for all to authenticated using (auth.uid() = user_id) with check (auth.uid() = user_id);
 do $$
 begin
-  if not exists (select 1 from pg_publication_tables where publication_name = 'supabase_realtime' and tablename = 'works') then
+  if not exists (select 1 from pg_publication_tables where pubname = 'supabase_realtime' and tablename = 'works') then
     alter publication supabase_realtime add table works;
   end if;
 end $$;
@@ -168,15 +181,7 @@ create table if not exists public.goals (
 );
 
 -- ---------- updated_at 自动更新触发器 ----------
-create or replace function public.set_updated_at()
-returns trigger
-language plpgsql
-as $$
-begin
-  new.updated_at = now();
-  return new;
-end;
-$$;
+
 
 drop trigger if exists tasks_set_updated_at on public.tasks;
 create trigger tasks_set_updated_at
@@ -201,16 +206,16 @@ begin
   foreach t in array array['tasks', 'notes', 'links', 'habits', 'milestones', 'dailies', 'goals']
   loop
     execute format('drop policy if exists "%s_user_select" on public.%I', t, t);
-    execute format('create policy "%s_user_select" on public.%I for select using (auth.uid() = user_id)', t, t);
+    execute format('create policy "%s_user_select" on public.%I for select to authenticated using (auth.uid() = user_id)', t, t);
 
     execute format('drop policy if exists "%s_user_insert" on public.%I', t, t);
-    execute format('create policy "%s_user_insert" on public.%I for insert with check (auth.uid() = user_id)', t, t);
+    execute format('create policy "%s_user_insert" on public.%I for insert to authenticated with check (auth.uid() = user_id)', t, t);
 
     execute format('drop policy if exists "%s_user_update" on public.%I', t, t);
-    execute format('create policy "%s_user_update" on public.%I for update using (auth.uid() = user_id) with check (auth.uid() = user_id)', t, t);
+    execute format('create policy "%s_user_update" on public.%I for update to authenticated using (auth.uid() = user_id) with check (auth.uid() = user_id)', t, t);
 
     execute format('drop policy if exists "%s_user_delete" on public.%I', t, t);
-    execute format('create policy "%s_user_delete" on public.%I for delete using (auth.uid() = user_id)', t, t);
+    execute format('create policy "%s_user_delete" on public.%I for delete to authenticated using (auth.uid() = user_id)', t, t);
   end loop;
 end;
 $$;
@@ -248,7 +253,8 @@ create table if not exists contacts (
   created_at timestamptz not null default now()
 );
 alter table contacts enable row level security;
-create policy "contacts 属于当前用户" on contacts for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
+drop policy if exists "contacts 属于当前用户" on contacts;
+create policy "contacts 属于当前用户" on contacts for all to authenticated using (auth.uid() = user_id) with check (auth.uid() = user_id);
 
 -- 把新表加入实时同步(已加入会抛 duplicate_object,忽略即可)
 do $$
@@ -258,5 +264,27 @@ begin
   exception when duplicate_object then
     null;
   end;
+end;
+$$;
+
+-- ---------- 11 个业务模块的 Data API 权限与 Realtime 发布 ----------
+-- GRANT 只开放表操作入口；RLS 仍限定 auth.uid() = user_id。
+-- 本脚本不授予 anon 业务表访问权限，不创建任何额外业务表。
+grant usage on schema public to authenticated;
+do $$
+declare
+  t text;
+begin
+  foreach t in array array['tasks', 'notes', 'links', 'habits', 'milestones', 'dailies', 'goals', 'works', 'memos', 'expenses', 'contacts']
+  loop
+    execute format('alter table public.%I enable row level security', t);
+    execute format('grant select, insert, update, delete on table public.%I to authenticated', t);
+    if not exists (
+      select 1 from pg_publication_tables
+      where pubname = 'supabase_realtime' and schemaname = 'public' and tablename = t
+    ) then
+      execute format('alter publication supabase_realtime add table public.%I', t);
+    end if;
+  end loop;
 end;
 $$;

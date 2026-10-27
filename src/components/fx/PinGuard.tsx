@@ -13,7 +13,7 @@ const LS_PIN = 'nexus-pin'
 const SS_UNLOCKED = 'nexus-pin-unlocked'
 
 const hasPin = () => Boolean(localStorage.getItem(LS_PIN))
-const isUnlocked = () => sessionStorage.getItem(SS_UNLOCKED) === '1'
+const isUnlocked = () => { try { return sessionStorage.getItem(SS_UNLOCKED) === '1' } catch { return false } }
 
 /** 数字键盘面板(锁屏与设置共用) */
 function Pad({ title, error, onDone, onCancel }: {
@@ -93,7 +93,7 @@ export function PinGuard() {
   }, [])
 
   const finishUnlock = () => {
-    sessionStorage.setItem(SS_UNLOCKED, '1')
+    try { sessionStorage.setItem(SS_UNLOCKED, '1') } catch { /* PIN验证后仅在当前页面解锁。 */ }
     setMode('off')
   }
 
@@ -130,7 +130,7 @@ export function PinGuard() {
           onDone={(pin) => {
             if (pin === firstPin) {
               localStorage.setItem(LS_PIN, btoa(pin))
-              sessionStorage.setItem(SS_UNLOCKED, '1')
+              try { sessionStorage.setItem(SS_UNLOCKED, '1') } catch { /* PIN验证后仅在当前页面解锁。 */ }
               setMode('off')
             } else {
               setError('两次不一致,重来')
@@ -148,7 +148,7 @@ export function PinGuard() {
           onDone={(pin) => {
             if (atob(localStorage.getItem(LS_PIN) ?? '') === pin) {
               localStorage.removeItem(LS_PIN)
-              sessionStorage.removeItem(SS_UNLOCKED)
+              try { sessionStorage.removeItem(SS_UNLOCKED) } catch { /* PIN已由本地存储移除。 */ }
               setMode('off')
             } else {
               setError('PIN 不对')

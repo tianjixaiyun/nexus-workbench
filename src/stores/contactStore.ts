@@ -1,3 +1,4 @@
+import { createStoreFetchGuard, insertCreatedById, reportStoreReadError } from './storeConcurrency'
 import { create } from 'zustand'
 import { dataAdapter } from '@/lib/data'
 import type { Contact, NewContact } from '@/lib/data/types'
@@ -12,23 +13,30 @@ interface ContactState {
   reset: () => void
 }
 
+const fetchGuard = createStoreFetchGuard()
+
 export const useContactStore = create<ContactState>((set, get) => ({
   contacts: [],
   loaded: false,
 
   async fetch() {
+    const request = fetchGuard.begin(get().contacts, () => get().contacts)
     try {
-      const contacts = await dataAdapter.contacts.list()
-      set({ contacts, loaded: true })
-    } catch (err) {
-      console.error('加载人脉失败:', err)
-      set({ contacts: [], loaded: true })
+      request.assertReady()
+      const rows = await dataAdapter.contacts.list()
+      if (!request.isCurrent()) return
+      // 并发更新或受控云端刷新已换过数组时，保留较新的界面记录。
+      set(request.canReplaceRows() ? { contacts: rows, loaded: true } : { loaded: true })
+    } catch (error) {
+      if (!request.isCurrent()) return
+      set({ loaded: true })
+      reportStoreReadError('人脉', error)
     }
   },
 
   async add(input) {
     const contact = await dataAdapter.contacts.create(input)
-    set({ contacts: [contact, ...get().contacts] })
+    set({ contacts: insertCreatedById(get().contacts, contact, true) })
   },
 
   async update(id, patch) {
@@ -42,6 +50,7 @@ export const useContactStore = create<ContactState>((set, get) => ({
   },
 
   reset() {
+    fetchGuard.reset()
     set({ contacts: [], loaded: false })
   },
 }))

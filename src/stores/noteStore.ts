@@ -1,3 +1,4 @@
+import { createStoreFetchGuard, insertCreatedById, reportStoreReadError } from './storeConcurrency'
 import { create } from 'zustand'
 import { dataAdapter } from '@/lib/data'
 import type { NewNote, Note } from '@/lib/data/types'
@@ -36,23 +37,30 @@ export function sortNotes(notes: Note[]): Note[] {
   })
 }
 
+const fetchGuard = createStoreFetchGuard()
+
 export const useNoteStore = create<NoteState>((set, get) => ({
   notes: [],
   loaded: false,
 
   async fetch() {
+    const request = fetchGuard.begin(get().notes, () => get().notes)
     try {
-      const notes = await dataAdapter.notes.list()
-      set({ notes, loaded: true })
-    } catch (err) {
-      console.error('加载笔记失败:', err)
-      set({ notes: [], loaded: true })
+      request.assertReady()
+      const rows = await dataAdapter.notes.list()
+      if (!request.isCurrent()) return
+      // 并发更新或受控云端刷新已换过数组时，保留较新的界面记录。
+      set(request.canReplaceRows() ? { notes: rows, loaded: true } : { loaded: true })
+    } catch (error) {
+      if (!request.isCurrent()) return
+      set({ loaded: true })
+      reportStoreReadError('便签', error)
     }
   },
 
   async add(input) {
     const note = await dataAdapter.notes.create(input)
-    set({ notes: [note, ...get().notes] })
+    set({ notes: insertCreatedById(get().notes, note, true) })
   },
 
   async update(id, patch) {
@@ -89,6 +97,7 @@ export const useNoteStore = create<NoteState>((set, get) => ({
   },
 
   reset() {
+    fetchGuard.reset()
     set({ notes: [], loaded: false })
   },
 }))

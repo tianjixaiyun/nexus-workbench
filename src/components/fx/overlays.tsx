@@ -159,9 +159,10 @@ const INTRO_KEY = 'nexus-dive-intro-done'
 
 export function DiveIntro() {
   const reduced = useReducedMotion()
-  const [state, setState] = useState<'run' | 'leave' | 'off'>(() =>
-    reduced || (typeof sessionStorage !== 'undefined' && sessionStorage.getItem(INTRO_KEY)) ? 'off' : 'run',
-  )
+  const [state, setState] = useState<'run' | 'leave' | 'off'>(() => {
+    if (reduced) return 'off'
+    try { return sessionStorage.getItem(INTRO_KEY) ? 'off' : 'run' } catch { return 'off' }
+  })
   const [depth, setDepth] = useState(0)
   const timersRef = useRef<number[]>([])
 

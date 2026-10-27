@@ -1,3 +1,4 @@
+import { createStoreFetchGuard, insertCreatedById, reportStoreReadError } from './storeConcurrency'
 import { create } from 'zustand'
 import { dataAdapter } from '@/lib/data'
 import type { NewTask, Task, TaskRecurrence, TaskStatus } from '@/lib/data/types'
@@ -56,18 +57,24 @@ interface TaskState {
   reset: () => void
 }
 
+const fetchGuard = createStoreFetchGuard()
+
 export const useTaskStore = create<TaskState>((set, get) => ({
   tasks: [],
   loaded: false,
 
   async fetch() {
+    const request = fetchGuard.begin(get().tasks, () => get().tasks)
     try {
-      const tasks = await dataAdapter.tasks.list()
-      set({ tasks, loaded: true })
-    } catch (err) {
-      // 失败也解除加载态,避免界面永远转圈;数据视为空
-      console.error('加载任务失败:', err)
-      set({ tasks: [], loaded: true })
+      request.assertReady()
+      const rows = await dataAdapter.tasks.list()
+      if (!request.isCurrent()) return
+      // 并发更新或受控云端刷新已换过数组时，保留较新的界面记录。
+      set(request.canReplaceRows() ? { tasks: rows, loaded: true } : { loaded: true })
+    } catch (error) {
+      if (!request.isCurrent()) return
+      set({ loaded: true })
+      reportStoreReadError('任务', error)
     }
   },
 
@@ -78,7 +85,7 @@ export const useTaskStore = create<TaskState>((set, get) => ({
         ? { ...input, completedAt: nowIso() }
         : input
     const task = await dataAdapter.tasks.create(payload)
-    set({ tasks: [...get().tasks, task] })
+    set({ tasks: insertCreatedById(get().tasks, task) })
   },
 
   async update(id, patch) {
@@ -120,7 +127,7 @@ export const useTaskStore = create<TaskState>((set, get) => ({
           tags: [...updated.tags],
           subtasks: updated.subtasks.map((s) => ({ ...s, done: false })),
         })
-        set({ tasks: [...get().tasks, spawn] })
+        set({ tasks: insertCreatedById(get().tasks, spawn) })
       }
     }
   },
@@ -194,6 +201,7 @@ export const useTaskStore = create<TaskState>((set, get) => ({
   },
 
   reset() {
+    fetchGuard.reset()
     set({ tasks: [], loaded: false })
   },
 }))

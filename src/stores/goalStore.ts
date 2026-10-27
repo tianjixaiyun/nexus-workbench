@@ -1,3 +1,4 @@
+import { createStoreFetchGuard, insertCreatedById, reportStoreReadError } from './storeConcurrency'
 import { create } from 'zustand'
 import { dataAdapter } from '@/lib/data'
 import type { Goal, NewGoal } from '@/lib/data/types'
@@ -12,23 +13,30 @@ interface GoalState {
   reset: () => void
 }
 
+const fetchGuard = createStoreFetchGuard()
+
 export const useGoalStore = create<GoalState>((set, get) => ({
   goals: [],
   loaded: false,
 
   async fetch() {
+    const request = fetchGuard.begin(get().goals, () => get().goals)
     try {
-      const goals = await dataAdapter.goals.list()
-      set({ goals, loaded: true })
-    } catch (err) {
-      console.error('加载目标失败:', err)
-      set({ goals: [], loaded: true })
+      request.assertReady()
+      const rows = await dataAdapter.goals.list()
+      if (!request.isCurrent()) return
+      // 并发更新或受控云端刷新已换过数组时，保留较新的界面记录。
+      set(request.canReplaceRows() ? { goals: rows, loaded: true } : { loaded: true })
+    } catch (error) {
+      if (!request.isCurrent()) return
+      set({ loaded: true })
+      reportStoreReadError('目标', error)
     }
   },
 
   async add(input) {
     const goal = await dataAdapter.goals.create(input)
-    set({ goals: [...get().goals, goal] })
+    set({ goals: insertCreatedById(get().goals, goal) })
   },
 
   async update(id, patch) {
@@ -42,6 +50,7 @@ export const useGoalStore = create<GoalState>((set, get) => ({
   },
 
   reset() {
+    fetchGuard.reset()
     set({ goals: [], loaded: false })
   },
 }))
