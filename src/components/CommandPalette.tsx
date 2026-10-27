@@ -66,6 +66,7 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
     }))
     const actions: PaletteItem[] = [
       { key: 'action:task', group: '操作', label: '新建任务', keywords: 'new add create 新建 添加 任务', icon: <Plus size={15} />, run: () => { requestAction('new-task'); go('/tasks') } },
+      { key: 'action:batch-task', group: '操作', label: '批量添加任务', keywords: 'batch bulk paste import 批量 添加 粘贴 清单', icon: <ListChecks size={15} />, run: () => { onClose(); window.dispatchEvent(new CustomEvent('nexus:capture', { detail: 'batch' })) } },
       { key: 'action:note', group: '操作', label: '新建便签', keywords: 'new add create 新建 添加 便签 笔记', icon: <Plus size={15} />, run: () => { requestAction('new-note'); go('/notes') } },
       { key: 'action:assistant', group: '操作', label: '问问助手（基于你的数据）', keywords: 'ai assistant 助手 问问 智能 帮我分析', icon: <Bot size={15} />, run: () => { onClose(); window.dispatchEvent(new CustomEvent('nexus:assistant')) } },
       { key: 'action:pin', group: '操作', label: '隐私锁 · 开启/关闭', keywords: 'pin lock 隐私 锁屏 密码', icon: <Bot size={15} />, run: () => { onClose(); window.dispatchEvent(new CustomEvent('nexus:pin-setup')) } },

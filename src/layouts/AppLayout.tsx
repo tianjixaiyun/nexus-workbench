@@ -56,6 +56,7 @@ export function AppLayout() {
   const [paletteOpen, setPaletteOpen] = useState(false)
   const [helpOpen, setHelpOpen] = useState(false)
   const [quickOpen, setQuickOpen] = useState(false)
+  const [quickBatch, setQuickBatch] = useState(false)
   const [assistantOpen, setAssistantOpen] = useState(false)
   const [dueDismissed, setDueDismissed] = useState(() => { try { return sessionStorage.getItem('nexus-due-dismissed') === '1' } catch { return false } })
   const location = useLocation()
@@ -132,6 +133,7 @@ export function AppLayout() {
         setHelpOpen(true)
       } else if (key === 'q') {
         e.preventDefault()
+        setQuickBatch(false)
         setQuickOpen(true)
       } else if (key === 'a') {
         e.preventDefault()
@@ -150,6 +152,16 @@ export function AppLayout() {
     const open = () => setAssistantOpen(true)
     window.addEventListener('nexus:assistant', open)
     return () => window.removeEventListener('nexus:assistant', open)
+  }, [])
+
+  useEffect(() => {
+    const open = (event: Event) => {
+      if (!useAuthStore.getState().user) return
+      setQuickBatch((event as CustomEvent).detail === 'batch')
+      setQuickOpen(true)
+    }
+    window.addEventListener('nexus:capture', open)
+    return () => window.removeEventListener('nexus:capture', open)
   }, [])
 
   // 云端模式未登录 → 去登录页
@@ -332,8 +344,8 @@ export function AppLayout() {
       </div>
 
       {user && <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} />}
-      {user && <QuickCapture open={quickOpen} onClose={() => setQuickOpen(false)} />}
-      {user && <QuickCaptureFab onClick={() => setQuickOpen(true)} />}
+      {user && <QuickCapture key={user.id} open={quickOpen} initialBatch={quickBatch} onClose={() => setQuickOpen(false)} />}
+      {user && <QuickCaptureFab onClick={() => { setQuickBatch(false); setQuickOpen(true) }} />}
       {ready && user && location.pathname !== '/settings' && <OnboardingModal />}
       <AssistantPanel
         open={assistantOpen}

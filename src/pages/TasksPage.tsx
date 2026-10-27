@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useSearchParams } from 'react-router'
-import { CalendarDays, ChevronDown, LayoutGrid, LayoutTemplate, List, Loader2, Plus, Search, SlidersHorizontal, X } from 'lucide-react'
+import { CalendarDays, CalendarRange, ChevronDown, CopyPlus, LayoutGrid, LayoutTemplate, List, Loader2, Plus, Search, SlidersHorizontal, X } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Input, Select } from '@/components/ui/Input'
 import type { Task, TaskStatus } from '@/lib/data/types'
@@ -11,6 +11,7 @@ import { activeCloudConnection } from '@/lib/config'
 import { useAuthStore } from '@/stores/authStore'
 import { useTaskStore } from '@/stores/taskStore'
 import { CalendarView } from '@/features/tasks/CalendarView'
+import { AgendaView } from '@/features/tasks/AgendaView'
 import { KanbanBoard } from '@/features/tasks/KanbanBoard'
 import { TaskList } from '@/features/tasks/TaskList'
 import { TaskModal } from '@/features/tasks/TaskModal'
@@ -20,12 +21,13 @@ import { savedTaskViewsKey, TASK_VIEW_QUERY_KEYS, type SavedViewOwner } from '@/
 import { retainTaskEditor } from '@/features/tasks/taskDraft'
 import { DEFAULT_FILTERS, TASK_SCOPES, filterTasks, patchTaskFilters, readFilters, readTaskView, resolveTaskTarget, taskScopeCounts, type TaskFilters } from '@/features/tasks/taskFilters'
 
-type ViewMode = 'list' | 'kanban' | 'calendar'
+type ViewMode = 'list' | 'kanban' | 'calendar' | 'agenda'
 const VIEW_KEY = 'nexus:task-view'
 const VIEWS: { value: ViewMode; label: string; icon: typeof List }[] = [
   { value: 'list', label: '列表', icon: List },
   { value: 'kanban', label: '看板', icon: LayoutGrid },
   { value: 'calendar', label: '日历', icon: CalendarDays },
+  { value: 'agenda', label: '日程', icon: CalendarRange },
 ]
 interface Creation { status: TaskStatus; dueDate?: string; tag: string; ownerKey: string }
 
@@ -157,7 +159,7 @@ export default function TasksPage() {
   const advancedCount = chips.filter(chip => !['scope', 'search'].includes(chip.key)).length
   return (
     <div className="flex min-w-0 flex-col gap-3">
-      <div className="flex items-center justify-between gap-1 sm:gap-2">
+      <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex rounded-xl border border-line-2 bg-surface-1 p-1" role="group" aria-label="任务显示方式">
           {VIEWS.map(({ value, label, icon: Icon }) => <button key={value} type="button" onClick={() => switchView(value)} aria-pressed={view === value} className={cn('flex cursor-pointer items-center gap-1 rounded-lg px-2 py-1.5 text-xs transition-all focus-visible:outline-2 focus-visible:outline-accent sm:gap-1.5 sm:px-3', view === value ? 'bg-surface-4 text-txt-primary' : 'text-txt-muted hover:text-txt-secondary')}><Icon size={14} />{label}</button>)}
         </div>
@@ -185,13 +187,14 @@ export default function TasksPage() {
         <div className="mt-2 flex items-center justify-between gap-2"><span className="text-xs text-txt-muted">{view === 'kanban' ? '看板内保持手动拖拽顺序' : '筛选会即时应用'}</span><Button size="sm" variant="ghost" onClick={() => setTemplateOpen(true)}><LayoutTemplate size={14} />从模板新建</Button></div>
       </div>}
       <div className="flex flex-wrap items-center justify-between gap-1.5">
-        <TaskSavedViews key={ownerKey ?? 'waiting'} owner={viewOwner} params={params} view={view} onRestore={restoreView} />
+        <div className="flex flex-wrap items-center gap-2"><TaskSavedViews key={ownerKey ?? 'waiting'} owner={viewOwner} params={params} view={view} onRestore={restoreView} /><Button size="sm" variant="ghost" onClick={() => window.dispatchEvent(new CustomEvent('nexus:capture', { detail: 'batch' }))}><CopyPlus size={14} />批量添加</Button></div>
         <span className="whitespace-nowrap text-xs text-txt-secondary" role="status" title={TASK_SCOPES.find(scope => scope.value === filters.scope)?.hint}>当前 {filtered.length} 项</span>
       </div>
       {chips.length > 0 && <div aria-label="当前生效的筛选条件" className="flex flex-wrap gap-1.5">{chips.map(chip => <button key={chip.key} type="button" onClick={() => changeFilters({ [chip.key]: DEFAULT_FILTERS[chip.key] })} aria-label={`移除筛选：${chip.label}`} title={chip.label} className="inline-flex min-h-8 max-w-full cursor-pointer items-center gap-1 rounded-lg border border-accent/25 bg-accent-soft px-2 text-xs text-accent focus-visible:outline-2 focus-visible:outline-accent"><span className="max-w-48 truncate">{chip.label}</span><X size={12} className="shrink-0" /></button>)}{hasFilters && <Button size="sm" variant="ghost" onClick={() => changeFilters(DEFAULT_FILTERS)}>清除筛选</Button>}</div>}
 
       {target.kind === 'missing' && <div role="alert" className="flex items-center justify-between gap-3 rounded-xl border border-warn/40 bg-warn/10 p-3 text-sm text-txt-secondary"><span>这条任务不存在或已移入回收站，请检查链接或到回收站查找。</span><Button size="sm" variant="ghost" onClick={closeTask}>关闭提示</Button></div>}
       {view === 'list' && <TaskList tasks={filtered} onEdit={openEdit} />}
+      {view === 'agenda' && <AgendaView key={`agenda:${ownerKey ?? 'waiting'}`} tasks={filtered} today={today} onEdit={openEdit} onAddAt={date => openCreate('todo', date)} />}
       {view === 'kanban' && <div className="h-[calc(100dvh-20rem)] min-h-[420px]"><KanbanBoard tasks={filtered} onEdit={openEdit} onAdd={status => openCreate(status)} /></div>}
       {view === 'calendar' && <div className="h-[calc(100dvh-20rem)] min-h-[480px] overflow-y-auto pr-1"><CalendarView tasks={filtered} onEdit={openEdit} onAddAt={date => openCreate('todo', date)} /></div>}
 

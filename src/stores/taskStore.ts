@@ -24,7 +24,12 @@ export function nextDueDate(due: string | null, rule: TaskRecurrence): string {
   const date = new Date(y, (m ?? 1) - 1, d ?? 1)
   if (rule === 'daily') date.setDate(date.getDate() + 1)
   if (rule === 'weekly') date.setDate(date.getDate() + 7)
-  if (rule === 'monthly') date.setMonth(date.getMonth() + 1)
+  if (rule === 'monthly') {
+    const day = date.getDate()
+    date.setDate(1)
+    date.setMonth(date.getMonth() + 1)
+    date.setDate(Math.min(day, new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate()))
+  }
   const mm = String(date.getMonth() + 1).padStart(2, '0')
   const dd = String(date.getDate()).padStart(2, '0')
   return `${date.getFullYear()}-${mm}-${dd}`

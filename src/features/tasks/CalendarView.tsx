@@ -71,7 +71,8 @@ function DayCell({ dateKey: key, day, tasks, isToday, inMonth, onEdit, onAddAt }
   onAddAt: (date: string) => void
 }) {
   const { setNodeRef, isOver } = useDroppable({ id: `day-${key}`, data: { type: 'cal-day', date: key } })
-  const visible = tasks.slice(0, 3)
+  const [expanded, setExpanded] = useState(false)
+  const visible = expanded ? tasks : tasks.slice(0, 3)
   const extra = tasks.length - visible.length
   const weekend = [0, 6].includes(new Date(key.replace(/-/g, '/')).getDay())
 
@@ -88,16 +89,18 @@ function DayCell({ dateKey: key, day, tasks, isToday, inMonth, onEdit, onAddAt }
       title={`点击在 ${key} 新建任务`}
     >
       <div className="flex items-center justify-between px-0.5">
-        <span
+        <button
+          type="button"
+          aria-label={`在 ${key} 新建任务`}
           className={cn(
-            'flex h-5 min-w-5 items-center justify-center rounded-md px-1 text-[11px] font-medium tabular-nums',
+            'flex h-7 min-w-7 cursor-pointer items-center justify-center rounded-md px-1 text-[11px] font-medium tabular-nums focus-visible:outline-2 focus-visible:outline-accent',
             isToday && 'neon-gradient-bg text-white',
             !isToday && weekend && inMonth && 'text-warn',
             !isToday && !weekend && 'text-txt-secondary',
           )}
         >
           {day}
-        </span>
+        </button>
         {tasks.length > 3 && <span className="text-[10px] text-txt-muted">{tasks.length} 项</span>}
       </div>
       <div className="flex flex-col gap-1">
@@ -110,8 +113,8 @@ function DayCell({ dateKey: key, day, tasks, isToday, inMonth, onEdit, onAddAt }
             />
           </div>
         ))}
-        {extra > 0 && (
-          <span className="px-1 text-[10px] text-txt-muted">还有 {extra} 项…</span>
+        {tasks.length > 3 && (
+          <button type="button" aria-expanded={expanded} aria-label={expanded ? `收起 ${key} 的任务` : `查看 ${key} 的全部 ${tasks.length} 项任务`} onClick={event => { event.stopPropagation(); setExpanded(value => !value) }} className="min-h-8 cursor-pointer rounded-md px-1 text-left text-[11px] text-accent hover:bg-accent-soft focus-visible:outline-2 focus-visible:outline-accent">{expanded ? '收起' : `还有 ${extra} 项，查看全部`}</button>
         )}
       </div>
     </div>
@@ -185,7 +188,7 @@ export function CalendarView({ onEdit, onAddAt, tasks: displayedTasks }: Calenda
       <div
         ref={setNodeRef}
         className={cn(
-          'flex w-64 shrink-0 flex-col rounded-2xl border border-line-1 bg-surface-1',
+          'flex w-full shrink-0 flex-col rounded-2xl border border-line-1 bg-surface-1 lg:w-64',
           isOver && 'border-accent bg-accent-soft',
         )}
       >
@@ -195,7 +198,7 @@ export function CalendarView({ onEdit, onAddAt, tasks: displayedTasks }: Calenda
           <span className="rounded-full bg-surface-3 px-1.5 text-[11px] text-txt-muted">{unscheduled.length}</span>
         </div>
         <p className="px-4 pt-2 text-[11px] leading-relaxed text-txt-muted">把任务拖到日历上排期,或拖回这里取消日期</p>
-        <div className="flex flex-1 flex-col gap-1.5 overflow-y-auto p-2">
+        <div className="flex max-h-64 flex-1 flex-col gap-1.5 overflow-y-auto p-2 lg:max-h-none">
           {unscheduled.map((task) => (
             <TaskChip key={task.id} task={task} onEdit={onEdit} />
           ))}
@@ -209,10 +212,10 @@ export function CalendarView({ onEdit, onAddAt, tasks: displayedTasks }: Calenda
 
   return (
     <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
-      <div className="flex gap-4">
+      <div className="flex flex-col gap-4 lg:flex-row">
         <div className="glass-card min-w-0 flex-1 overflow-hidden">
           {/* 月历头部 */}
-          <div className="flex items-center justify-between border-b border-line-1 px-4 py-3">
+          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-line-1 px-3 py-3 sm:px-4">
             <div className="flex items-center gap-1">
               <button
                 onClick={() => shift(-1)}
@@ -238,7 +241,7 @@ export function CalendarView({ onEdit, onAddAt, tasks: displayedTasks }: Calenda
                 <ChevronRight size={16} />
               </button>
             </div>
-            <div className="flex items-center gap-2 text-[11px] text-txt-muted">
+            <div className="hidden items-center gap-2 text-[11px] text-txt-muted sm:flex">
               <CalendarDays size={13} />
               拖动任务片改期,点空白处新建
             </div>

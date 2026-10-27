@@ -30,16 +30,24 @@ const CN_NUM: Record<string, number> = {
 
 function cnNumToNumber(text: string): number | null {
   if (/^\d+$/.test(text)) return Number(text)
+  if (text.includes('十')) {
+    const [tens, ones] = text.split('十')
+    return (tens ? CN_NUM[tens] ?? 0 : 1) * 10 + (ones ? CN_NUM[ones] ?? 0 : 0)
+  }
   return CN_NUM[text] ?? null
 }
 
 /** 从基准日推算"下一个周X"(含今天:今天正好是周X则返回今天) */
-function nextWeekday(base: Date, weekday: number, forceNextWeek = false): Date {
+function nextWeekday(base: Date, weekday: number, weeksAhead = 0): Date {
   const d = new Date(base)
   const diff = (weekday - d.getDay() + 7) % 7
-  d.setDate(d.getDate() + (forceNextWeek ? (diff === 0 ? 7 : diff) + (diff === 0 ? 0 : 0) : diff))
-  if (forceNextWeek && diff === 0) d.setDate(d.getDate() + 7)
+  d.setDate(d.getDate() + (weeksAhead ? -((d.getDay() + 6) % 7) + weeksAhead * 7 + (weekday + 6) % 7 : diff))
   return d
+}
+
+function validDate(year: number, month: number, day: number): Date | null {
+  const value = new Date(year, month - 1, day)
+  return value.getFullYear() === year && value.getMonth() === month - 1 && value.getDate() === day ? value : null
 }
 
 function fmt(d: Date): string {
@@ -53,10 +61,10 @@ export function parseNaturalLanguage(raw: string, today = new Date()): ParsedInp
   let recurrence: TaskRecurrence | null = null
   let priority: TaskPriority | null = null
 
-  const take = (pattern: RegExp, handler: (m: RegExpMatchArray) => void) => {
+  const take = (pattern: RegExp, handler: (m: RegExpMatchArray) => void | boolean) => {
     const m = text.match(pattern)
     if (!m) return
-    handler(m)
+    if (handler(m) === false) return
     matched.push(m[0].trim())
     text = text.replace(m[0], ' ')
   }
@@ -66,18 +74,21 @@ export function parseNaturalLanguage(raw: string, today = new Date()): ParsedInp
     recurrence = 'daily'
   })
   take(/每月([0-9一二两三四五六七八九十]+)[号日]/, (m) => {
-    recurrence = 'monthly'
     const day = cnNumToNumber(m[1])
+    if (!day || day > 31) return false
+    recurrence = 'monthly'
     if (day && !dueDate) {
-      const d = new Date(today.getFullYear(), today.getMonth(), day)
+      const d = new Date(today.getFullYear(), today.getMonth(), Math.min(day, new Date(today.getFullYear(), today.getMonth() + 1, 0).getDate()))
       if (d < new Date(today.getFullYear(), today.getMonth(), today.getDate())) {
+        d.setDate(1)
         d.setMonth(d.getMonth() + 1)
+        d.setDate(Math.min(day, new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate()))
       }
       dueDate = fmt(d)
     }
   })
   // 光写「每月」也算每月重复(不带具体日期)
-  take(/每月/, () => {
+  take(/每月(?![0-9一二两三四五六七八九十])/, () => {
     recurrence = recurrence ?? 'monthly'
   })
   take(/每周([一二三四五六日天])?/, (m) => {
@@ -87,6 +98,11 @@ export function parseNaturalLanguage(raw: string, today = new Date()): ParsedInp
   })
 
   // —— 相对日期(大后天要先于后天匹配) ——
+  take(/(?<!\d)(\d{4})-(\d{2})-(\d{2})(?!\d)/, (m) => {
+    const date = validDate(Number(m[1]), Number(m[2]), Number(m[3]))
+    if (!date) return false
+    dueDate = fmt(date)
+  })
   take(/大后天/, () => {
     const d = new Date(today)
     d.setDate(d.getDate() + 3)
@@ -107,6 +123,7 @@ export function parseNaturalLanguage(raw: string, today = new Date()): ParsedInp
   })
   take(/([0-9]+)\s*天[后後]/, (m) => {
     const n = Number(m[1])
+    if (n <= 0 || n >= 366) return false
     if (n > 0 && n < 366) {
       const d = new Date(today)
       d.setDate(d.getDate() + n)
@@ -115,21 +132,24 @@ export function parseNaturalLanguage(raw: string, today = new Date()): ParsedInp
   })
   take(/下+周([一二三四五六日天])?/, (m) => {
     const wd = m[1] ? WEEKDAYS[m[1]] : 1
-    if (!dueDate) dueDate = fmt(nextWeekday(today, wd, true))
+    if (!dueDate) dueDate = fmt(nextWeekday(today, wd, m[0].match(/^下+/)![0].length))
   })
   take(/(?:周|礼拜|星期)([一二三四五六日天])/, (m) => {
     if (!dueDate) dueDate = fmt(nextWeekday(today, WEEKDAYS[m[1]]))
   })
-  take(/([12]?[0-9])月([1-3]?[0-9])[号日]/, (m) => {
+  take(/(?<!\d)([12]?[0-9])月([1-3]?[0-9])[号日]/, (m) => {
     const month = Number(m[1])
     const day = Number(m[2])
     if (month >= 1 && month <= 12 && day >= 1 && day <= 31) {
-      let d = new Date(today.getFullYear(), month - 1, day)
+      let d = validDate(today.getFullYear(), month, day)
+      if (!d) return false
       if (d < new Date(today.getFullYear(), today.getMonth(), today.getDate())) {
-        d = new Date(today.getFullYear() + 1, month - 1, day)
+        const next = validDate(today.getFullYear() + 1, month, day)
+        if (!next) return false
+        d = next
       }
       if (!dueDate) dueDate = fmt(d)
-    }
+    } else return false
   })
 
   // —— 优先级(Todoist 式 p1 最高) ——

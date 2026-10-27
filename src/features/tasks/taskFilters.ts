@@ -80,11 +80,11 @@ export function filterTasks(tasks: Task[], filters: TaskFilters, today: string):
   })
 }
 
-export function readTaskView(params: URLSearchParams, saved: string | null): 'list' | 'kanban' | 'calendar' {
+export function readTaskView(params: URLSearchParams, saved: string | null): 'list' | 'kanban' | 'calendar' | 'agenda' {
   const requested = params.get('view')
-  if (requested === 'list' || requested === 'kanban' || requested === 'calendar') return requested
+  if (requested === 'list' || requested === 'kanban' || requested === 'calendar' || requested === 'agenda') return requested
   if (['scope', 'q', 'tag', 'status', 'priority', 'sort', 'task'].some(key => params.has(key))) return 'list'
-  return saved === 'kanban' || saved === 'calendar' ? saved : 'list'
+  return saved === 'kanban' || saved === 'calendar' || saved === 'agenda' ? saved : 'list'
 }
 
 const FILTER_PARAMS: Record<keyof TaskFilters, string> = { scope: 'scope', search: 'q', status: 'status', priority: 'priority', tag: 'tag', sort: 'sort' }
