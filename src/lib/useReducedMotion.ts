@@ -1,23 +1,23 @@
 import { useEffect, useState } from 'react'
+import { useSettingsStore } from '@/stores/settingsStore'
 
 const QUERY = '(prefers-reduced-motion: reduce)'
+const systemReducedMotion = () => typeof window !== 'undefined' && 'matchMedia' in window && window.matchMedia(QUERY).matches
 
-/** 读取系统「减少动态效果」偏好(同步,供事件回调等非渲染代码使用) */
+/** 手动低干扰与系统减少动态效果取并集，手动关闭不会覆盖系统偏好。 */
 export function prefersReducedMotion(): boolean {
-  return typeof window !== 'undefined' && 'matchMedia' in window && window.matchMedia(QUERY).matches
+  return systemReducedMotion() || useSettingsStore.getState().calmMode
 }
 
-/**
- * 响应式订阅系统「减少动态效果」偏好。
- * 重型动效组件(丝带拖尾/自定义光标/滚动歪斜/海洋粒子与 3D 场景)据此自动降级。
- */
 export function useReducedMotion(): boolean {
-  const [reduced, setReduced] = useState(prefersReducedMotion)
+  const calm = useSettingsStore(state => state.calmMode)
+  const [systemReduced, setSystemReduced] = useState(systemReducedMotion)
   useEffect(() => {
-    const mq = window.matchMedia(QUERY)
-    const onChange = () => setReduced(mq.matches)
-    mq.addEventListener('change', onChange)
-    return () => mq.removeEventListener('change', onChange)
+    if (!('matchMedia' in window)) return
+    const media = window.matchMedia(QUERY)
+    const change = () => setSystemReduced(media.matches)
+    media.addEventListener('change', change)
+    return () => media.removeEventListener('change', change)
   }, [])
-  return reduced
+  return calm || systemReduced
 }

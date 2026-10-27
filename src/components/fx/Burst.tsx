@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react'
+import { useReducedMotion, prefersReducedMotion } from '@/lib/useReducedMotion'
 
 /**
  * 全屏粒子引擎:任务完成金色水花 / 番茄庆祝气泡彩带 / 通用粒子迸发。
@@ -32,7 +33,7 @@ let ctxApi: ((x: number, y: number, opts: BurstOptions) => void) | null = null
 
 /** 在屏幕坐标 (x, y) 迸发一簇粒子 */
 export function burst(x: number, y: number, opts: BurstOptions = {}) {
-  ctxApi?.(x, y, opts)
+  if (!prefersReducedMotion()) ctxApi?.(x, y, opts)
 }
 
 /** 任务完成:金色水花 + 几颗小气泡 */
@@ -50,6 +51,7 @@ export function splashGold(x: number, y: number) {
 
 /** 番茄完成 / 里程碑:底部喷发的气泡与彩带 */
 export function celebrate() {
+  if (prefersReducedMotion()) return
   const w = window.innerWidth
   const h = window.innerHeight
   burst(w * 0.5, h * 0.72, {
@@ -66,9 +68,11 @@ export function celebrate() {
 }
 
 export function BurstHost() {
+  const reduced = useReducedMotion()
   const canvasRef = useRef<HTMLCanvasElement>(null)
 
   useEffect(() => {
+    if (reduced) return
     const canvas = canvasRef.current
     if (!canvas) return
     const ctx = canvas.getContext('2d')!
@@ -153,7 +157,7 @@ export function BurstHost() {
       window.removeEventListener('resize', resize)
       ctxApi = null
     }
-  }, [])
+  }, [reduced])
 
-  return <canvas ref={canvasRef} className="pointer-events-none fixed inset-0 z-[9999]" aria-hidden />
+  return reduced ? null : <canvas ref={canvasRef} className="pointer-events-none fixed inset-0 z-[9999]" aria-hidden />
 }

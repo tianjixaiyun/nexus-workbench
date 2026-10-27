@@ -2,6 +2,7 @@ import { Suspense, lazy } from 'react'
 import { BrowserRouter, Route, Routes } from 'react-router'
 import { AppLayout } from '@/layouts/AppLayout'
 import { FocusRuntime } from '@/components/FocusRuntime'
+import { BackupImportDialog } from '@/components/BackupImportDialog'
 import { KonamiEgg } from '@/components/fx/KonamiEgg'
 import { PinGuard } from '@/components/fx/PinGuard'
 import { FluidTrail } from '@/components/fx/FluidTrail'
@@ -64,6 +65,7 @@ export default function App() {
   return (
     <BrowserRouter basename={import.meta.env.PROD ? '/nexus-workbench' : '/'}>
       <FocusRuntime />
+      <BackupImportDialog />
       <GlobalRipple />
       <LiquidCurtain />
       <BurstHost />

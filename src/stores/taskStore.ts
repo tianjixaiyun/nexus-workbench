@@ -177,30 +177,20 @@ export const useTaskStore = create<TaskState>((set, get) => ({
   },
 
   async move(id, status, targetIndex) {
-    const { tasks } = get()
-    const task = tasks.find((t) => t.id === id)
+    const task = get().tasks.find(item => item.id === id && !item.deletedAt)
     if (!task) return
-
-    const column = tasks
-      .filter((t) => t.status === status && t.id !== id)
+    // 复用已有状态更新，完成时间、重复任务和持久化失败都保持一致语义。
+    if (task.status !== status) await get().update(id, { status })
+    const current = get().tasks.find(item => item.id === id && !item.deletedAt)
+    if (!current) return
+    const column = get().tasks
+      .filter(item => !item.deletedAt && item.status === status && item.id !== id)
       .sort((a, b) => a.sortOrder - b.sortOrder)
-    const next = [...column]
-    next.splice(Math.min(targetIndex, next.length), 0, { ...task, status })
-
-    const moved = next.map((t, i) => ({ ...t, status, sortOrder: (i + 1) * 100 }))
-    const others = tasks.filter((t) => t.status !== status)
-    set({ tasks: [...others, ...moved].sort((a, b) => a.sortOrder - b.sortOrder) })
-
-    // 跨列移动相当于状态切换,同步维护 completedAt(仅被拖拽的那张卡需要判断)
-    await Promise.all(
-      moved.map((t) => {
-        let completedAt = t.completedAt
-        if (t.id === task.id && task.status !== t.status) {
-          completedAt = t.status === 'done' ? nowIso() : null
-        }
-        return dataAdapter.tasks.update(t.id, { sortOrder: t.sortOrder, status: t.status, completedAt })
-      }),
-    )
+    column.splice(Math.max(0, Math.min(targetIndex, column.length)), 0, current)
+    for (const [index, item] of column.entries()) {
+      const sortOrder = (index + 1) * 100
+      if (item.sortOrder !== sortOrder) await get().update(item.id, { sortOrder })
+    }
   },
 
   reset() {

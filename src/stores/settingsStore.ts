@@ -12,6 +12,8 @@ export interface WeatherCity {
 }
 
 interface Settings {
+  calmMode: boolean
+  setCalmMode: (enabled: boolean) => boolean
   dashboardLayout: DashboardWidget[]
   setDashboardLayout: (layout: DashboardWidget[]) => void
   /** 主题:dark(默认)/ light */
@@ -29,13 +31,14 @@ interface Settings {
 
 const KEY = 'nexus:settings'
 
-type Stored = Pick<Settings, 'weatherCity' | 'theme' | 'lastExportAt' | 'firstOpenedAt' | 'dashboardLayout'>
+type Stored = Pick<Settings, 'weatherCity' | 'theme' | 'lastExportAt' | 'firstOpenedAt' | 'dashboardLayout' | 'calmMode'>
 
 function load(): Stored {
   try {
     const raw = localStorage.getItem(KEY)
     const parsed = raw ? (JSON.parse(raw) as Partial<Stored>) : {}
     const stored: Stored = {
+      calmMode: parsed.calmMode === true,
       weatherCity: parsed.weatherCity ?? null,
       dashboardLayout: normalizeDashboardLayout(parsed.dashboardLayout),
       theme: parsed.theme === 'light' ? 'light' : 'dark',
@@ -54,6 +57,7 @@ function load(): Stored {
     return stored
   } catch {
     return {
+      calmMode: false,
       weatherCity: null,
       dashboardLayout: normalizeDashboardLayout(null),
       theme: 'dark',
@@ -63,11 +67,12 @@ function load(): Stored {
   }
 }
 
-function persist(patch: Partial<Stored>) {
+function persist(patch: Partial<Stored>): boolean {
   try {
     localStorage.setItem(KEY, JSON.stringify({ ...load(), ...patch }))
+    return true
   } catch {
-    // localStorage 满/被禁用时静默失败
+    return false
   }
 }
 
@@ -77,9 +82,20 @@ export function applyTheme(theme: Theme) {
   document.documentElement.style.colorScheme = theme
 }
 
+export function applyCalmMode(enabled: boolean) {
+  document.documentElement.classList.toggle('nexus-calm', enabled)
+}
+
 const initial = load()
 
 export const useSettingsStore = create<Settings>((set) => ({
+  calmMode: initial.calmMode,
+  setCalmMode(enabled) {
+    const saved = persist({ calmMode: enabled })
+    applyCalmMode(enabled)
+    set({ calmMode: enabled })
+    return saved
+  },
   dashboardLayout: initial.dashboardLayout,
   setDashboardLayout(layout) {
     const dashboardLayout = normalizeDashboardLayout(layout)
@@ -108,3 +124,5 @@ export const useSettingsStore = create<Settings>((set) => ({
 
 // 模块加载即应用,避免首帧闪错主题
 applyTheme(initial.theme)
+
+applyCalmMode(initial.calmMode)

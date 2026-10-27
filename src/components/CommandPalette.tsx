@@ -7,7 +7,10 @@ import {
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { APP_MODULES, COMMAND_GROUPS, commandItemsInDisplayOrder, commandSelectionIndex } from '@/lib/modules'
-import { exportData, importData } from '@/lib/backup'
+import { exportData } from '@/lib/backup'
+import { requestBackupImport } from '@/lib/backupImport'
+import { noteContextHref, taskContextHref } from '@/lib/contextLinks'
+import { useSettingsStore } from '@/stores/settingsStore'
 import { requestAction } from '@/lib/uiBus'
 import { useNativeDialog } from '@/components/ui/Modal'
 import { toast } from '@/stores/toastStore'
@@ -36,7 +39,7 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
   const dialogRef = useNativeDialog(open)
   const inputRef = useRef<HTMLInputElement>(null)
   const listRef = useRef<HTMLDivElement>(null)
-  const fileInputRef = useRef<HTMLInputElement>(null)
+  const calmMode = useSettingsStore(state => state.calmMode)
   const listId = useId()
   const titleId = useId()
   const tasks = useTaskStore((s) => s.tasks)
@@ -67,18 +70,22 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
       { key: 'action:assistant', group: '操作', label: '问问助手（基于你的数据）', keywords: 'ai assistant 助手 问问 智能 帮我分析', icon: <Bot size={15} />, run: () => { onClose(); window.dispatchEvent(new CustomEvent('nexus:assistant')) } },
       { key: 'action:pin', group: '操作', label: '隐私锁 · 开启/关闭', keywords: 'pin lock 隐私 锁屏 密码', icon: <Bot size={15} />, run: () => { onClose(); window.dispatchEvent(new CustomEvent('nexus:pin-setup')) } },
       { key: 'action:export', group: '操作', label: '导出数据备份（JSON）', keywords: 'export backup 导出 备份 下载', icon: <FileDown size={15} />, run: async () => { await exportData(); onClose() } },
-      { key: 'action:import', group: '操作', label: '导入数据备份', keywords: 'import restore 导入 恢复', icon: <FileUp size={15} />, run: () => { fileInputRef.current?.click() } },
+      { key: 'action:import', group: '操作', label: '导入数据备份', keywords: 'import restore 导入 恢复', icon: <FileUp size={15} />, run: () => { onClose(); requestBackupImport() } },
     ]
+    actions.push({ key: 'action:calm', group: '操作', label: '切换低干扰模式', hint: calmMode ? '当前开启' : '当前关闭', keywords: 'calm motion focus 低干扰 外观 动效 安静', icon: <Bot size={15} />, run: () => {
+      if (!useSettingsStore.getState().setCalmMode(!calmMode)) toast.error('外观偏好未能保存', '当前页面已切换，刷新后可能恢复。')
+      onClose()
+    } })
     return [
       ...pages, ...actions,
       ...activeTasks(tasks).map((task): PaletteItem => ({
         key: `task:${task.id}`, group: '任务', label: task.title,
         hint: task.status === 'done' ? '已完成' : task.status === 'doing' ? '进行中' : '待办',
-        keywords: `${task.description} ${task.tags.join(' ')}`, icon: <ListChecks size={15} />, run: () => go('/tasks'),
+        keywords: `${task.description} ${task.tags.join(' ')}`, icon: <ListChecks size={15} />, run: () => go(taskContextHref(task.id)),
       })),
       ...activeNotes(notes).map((note): PaletteItem => ({
         key: `note:${note.id}`, group: '笔记', label: note.title || '无标题', hint: note.content.slice(0, 24),
-        keywords: note.content, icon: <StickyNote size={15} />, run: () => go('/notes'),
+        keywords: note.content, icon: <StickyNote size={15} />, run: () => go(noteContextHref(note.id)),
       })),
       ...links.map((link): PaletteItem => ({
         key: `link:${link.id}`, group: '链接', label: link.name, hint: link.group,
@@ -99,7 +106,7 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
         keywords: `${expense.note} ${expense.category}`, icon: <BarChart3 size={15} />, run: () => go('/expense'),
       })),
     ]
-  }, [tasks, notes, links, memos, works, expenses, navigate, onClose])
+  }, [tasks, notes, links, memos, works, expenses, calmMode, navigate, onClose])
 
   const results = useMemo(() => {
     const raw = query.trim()
@@ -157,14 +164,6 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
     try { await item.run() }
     catch (err) { setNotice(err instanceof Error ? err.message : '操作失败，请重试') }
   }
-  const handleImportFile = async (file: File) => {
-    try {
-      await importData(file)
-      setNotice('导入完成，页面将刷新…')
-      setTimeout(() => window.location.reload(), 1200)
-    } catch (err) { setNotice(err instanceof Error ? err.message : '导入失败') }
-  }
-
   return createPortal(
     <dialog
       ref={dialogRef}
@@ -240,17 +239,6 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
           <span>↑↓ 选择 · Enter 确认 · Esc 关闭</span><span className="hidden sm:inline">{results.length} 个结果</span>
         </div>
       </div>
-      <input
-        ref={fileInputRef}
-        type="file"
-        accept="application/json"
-        className="hidden"
-        onChange={(e) => {
-          const file = e.target.files?.[0]
-          if (file) void handleImportFile(file)
-          e.target.value = ''
-        }}
-      />
     </dialog>,
     document.body,
   )

@@ -19,8 +19,10 @@ import type { Task, TaskStatus } from '@/lib/data/types'
 import { cn, formatDate, isOverdue } from '@/lib/utils'
 import { activeTasks, useTaskStore } from '@/stores/taskStore'
 import { ALL_STATUSES, PRIORITY_META, PRIORITY_STRIPE, STATUS_META } from './taskMeta'
+import { kanbanTargetIndex } from './taskFilters'
 
 interface KanbanProps {
+  tasks?: Task[]
   onEdit: (task: Task) => void
   onAdd: (status: TaskStatus) => void
 }
@@ -188,11 +190,11 @@ function KanbanColumn({ status, tasks, onEdit, onAdd, onDelete }: {
   )
 }
 
-export function KanbanBoard({ onEdit, onAdd }: KanbanProps) {
+export function KanbanBoard({ onEdit, onAdd, tasks: displayedTasks }: KanbanProps) {
   const allTasks = useTaskStore((s) => s.tasks)
   const move = useTaskStore((s) => s.move)
   const softDelete = useTaskStore((s) => s.softDelete)
-  const tasks = useMemo(() => activeTasks(allTasks), [allTasks])
+  const tasks = useMemo(() => displayedTasks ?? activeTasks(allTasks), [displayedTasks, allTasks])
   const [draggingId, setDraggingId] = useState<string | null>(null)
   const [deleteId, setDeleteId] = useState<string | null>(null)
 
@@ -229,10 +231,8 @@ export function KanbanBoard({ onEdit, onAdd }: KanbanProps) {
       return
     }
 
-    const targetIndex =
-      overData?.type === 'task' && typeof overData.sortable?.index === 'number'
-        ? overData.sortable.index
-        : columns[targetStatus].filter((t) => t.id !== activeTask.id).length
+    // store.move 接收完整列索引，不能直接使用筛选后的可见索引。
+    const targetIndex = kanbanTargetIndex(allTasks, activeTask.id, targetStatus, overData?.type === 'task' ? String(over.id) : null)
 
     move(String(active.id), targetStatus, targetIndex)
   }

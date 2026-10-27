@@ -440,3 +440,22 @@ html.light .glass-card {
   max-width: 100%;
   border-radius: 0.5rem;
 }
+
+/* 用户主动选择低干扰；业务内容即时可见，装饰性过场与循环降低。 */
+html.nexus-calm *, html.nexus-calm *::before, html.nexus-calm *::after {
+  animation-duration: 0.01ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.01ms !important;
+  scroll-behavior: auto !important;
+}
+html.nexus-calm .nexus-stagger-in, html.nexus-calm .ocean-acts > section,
+html.nexus-calm .nexus-blur-word {
+  animation: none !important;
+  opacity: 1 !important;
+  filter: none !important;
+  transform: none !important;
+}
+html.nexus-calm .spotlight-card::before, html.nexus-calm .btn-shine::after,
+html.nexus-calm .nexus-beam, html.nexus-calm .nexus-ripple, html.nexus-calm .nexus-bubble {
+  display: none !important;
+}

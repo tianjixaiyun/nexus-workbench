@@ -24,6 +24,8 @@ import type {
   NewContact,
 } from './types'
 import { supabase } from '../config'
+import { uid } from '../utils'
+import { BACKUP_IMPORT_USER } from '../backupImport'
 
 /**
  * Supabase 云端实现。
@@ -60,9 +62,11 @@ function makeCloudStore<T, New>(
     },
     async create(item: New) {
       const userId = await requireUserId()
+      const expected = (item as New & { [BACKUP_IMPORT_USER]?: string })[BACKUP_IMPORT_USER]
+      if (expected && expected !== userId) throw new Error('导入账号已变化，已停止发送写入请求')
       const { data, error } = await supabase!
         .from(table)
-        .insert({ ...toColumns(item as Partial<T>), user_id: userId })
+        .insert({ ...toColumns(item as Partial<T>), id: uid(), user_id: userId })
         .select()
         .single()
       if (error) throw error

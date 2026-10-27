@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { Link } from 'react-router'
 import { Loader2, Pencil, Plus, Target, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
@@ -106,6 +107,10 @@ export function GoalsView() {
                       ? `${progress.done}/${progress.total} 个「#${goal.tag}」任务已完成`
                       : `手动进度 ${progress.percent}%`}
                   </p>
+                  {goal.mode === 'auto' && goal.tag && <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-xs text-accent">
+                    <Link to={`/tasks?${new URLSearchParams({ tag: goal.tag })}`} aria-label={`查看目标「${goal.title}」的相关任务`} className="rounded hover:underline focus-visible:outline-2 focus-visible:outline-accent">查看相关任务</Link>
+                    <Link to={`/tasks?${new URLSearchParams({ tag: goal.tag, create: '1' })}`} aria-label={`为目标「${goal.title}」添加下一步`} className="rounded hover:underline focus-visible:outline-2 focus-visible:outline-accent">添加下一步</Link>
+                  </div>}
                   {dl && <p className={cn('mt-0.5 text-[11px]', dl.tone)}>{dl.text}</p>}
                 </div>
                 <div className="hidden shrink-0 flex-col gap-1 group-hover:flex">

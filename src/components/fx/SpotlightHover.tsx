@@ -1,4 +1,5 @@
 import { useEffect } from 'react'
+import { useReducedMotion } from '@/lib/useReducedMotion'
 
 /**
  * 全局指针委托(Aceternity 式 Spotlight,自研实现):
@@ -7,8 +8,9 @@ import { useEffect } from 'react'
  * 必须保持零重依赖:本组件在入口静态图内,别在这里 import 共享组件。
  */
 export function SpotlightHover() {
+  const reduced = useReducedMotion()
   useEffect(() => {
-    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
+    if (reduced) return
     const onMove = (e: PointerEvent) => {
       const el = (e.target as HTMLElement | null)?.closest?.('.spotlight-card') as HTMLElement | null
       if (!el) return
@@ -18,6 +20,6 @@ export function SpotlightHover() {
     }
     document.addEventListener('pointermove', onMove, { passive: true })
     return () => document.removeEventListener('pointermove', onMove)
-  }, [])
+  }, [reduced])
   return null
 }

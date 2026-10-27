@@ -1,9 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { Link, useSearchParams } from 'react-router'
 import { Maximize2, Minimize2, Pause, Play, RotateCcw, Settings2, SkipForward, Timer as TimerIcon, Volume2, VolumeX } from 'lucide-react'
 import { Card } from '@/components/ui/Card'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { Select } from '@/components/ui/Input'
 import { cn } from '@/lib/utils'
+import { removeContextParam, resolveFocusContext, taskContextHref } from '@/lib/contextLinks'
 import { recentSessions, todayFocusMinutes, todaySessions } from '@/lib/pomodoro'
 import { FOCUS_MODE_LABELS, formatFocusTime, remainingSeconds, type FocusConfig, type FocusMode } from '@/lib/focusTimer'
 import { activeTasks, useTaskStore } from '@/stores/taskStore'
@@ -17,6 +19,12 @@ const CIRCUMFERENCE = 2 * Math.PI * RADIUS
 
 export function FocusView() {
   const tasks = useTaskStore((s) => s.tasks)
+  const tasksLoaded = useTaskStore((s) => s.loaded)
+  const authReady = useAuthStore((s) => s.ready)
+  const userId = useAuthStore((s) => s.user?.id ?? null)
+  const [searchParams, setSearchParams] = useSearchParams()
+  const requestedTaskId = searchParams.get('task')
+  const [contextNotice, setContextNotice] = useState<string | null>(null)
   const { timer, now, busy } = useFocusStore()
   const { mode, running, taskId, config: focusCfg } = timer
   const remaining = remainingSeconds(timer, now)
@@ -27,17 +35,56 @@ export function FocusView() {
   const MODES = useMemo(() => (['work', 'short', 'long'] as const).map((value) => ({ value, label: FOCUS_MODE_LABELS[value], minutes: focusCfg[value] })), [focusCfg])
   const light = useSettingsStore((s) => s.theme) === 'light'
   const focusableTasks = useMemo(() => activeTasks(tasks).filter((t) => t.status !== 'done'), [tasks])
-  const selectedTask = tasks.find((t) => t.id === taskId)
-  const switchMode = (next: FocusMode) => { void useFocusStore.getState().switchMode(next) }
+  const selectedTask = timer.taskOwner === userId ? tasks.find((t) => t.id === taskId && !t.deletedAt) : undefined
+
+  useEffect(() => {
+    const result = resolveFocusContext({ tasks, loaded: tasksLoaded, authReady, userId, taskId: requestedTaskId, timer: useFocusStore.getState().timer })
+    if (result.kind === 'none' || result.kind === 'waiting') return
+    let cancelled = false
+    const consumeRequest = () => setSearchParams((current) => removeContextParam(current, 'task'), { replace: true })
+    if (result.kind === 'blocked' || result.kind === 'invalid') {
+      setContextNotice(result.message)
+      consumeRequest()
+      return
+    }
+    void (async () => {
+      const auth = useAuthStore.getState()
+      if (!auth.ready || auth.user?.id !== result.taskOwner) return
+      await useFocusStore.getState().selectTask(result.taskId, result.taskOwner)
+      const current = useFocusStore.getState().timer
+      const currentAuth = useAuthStore.getState()
+      if (!currentAuth.ready || currentAuth.user?.id !== result.taskOwner) {
+        if (!current.sessionId && current.taskId === result.taskId && current.taskOwner === result.taskOwner) {
+          await useFocusStore.getState().selectTask('', currentAuth.user?.id ?? '')
+        }
+        return
+      }
+      if (cancelled) return
+      if (current.taskId === result.taskId && current.taskOwner === result.taskOwner) {
+        setContextNotice(`已选择「${result.title}」，点击开始后才会计时。`)
+      } else {
+        const refreshed = resolveFocusContext({ tasks: useTaskStore.getState().tasks, loaded: true, authReady: true, userId: result.taskOwner, taskId: result.taskId, timer: current })
+        setContextNotice(refreshed.kind === 'blocked' ? refreshed.message : '目标任务未能选中，请检查页面提示后重新选择。')
+      }
+      consumeRequest()
+    })()
+    return () => { cancelled = true }
+  }, [tasks, tasksLoaded, authReady, userId, requestedTaskId, setSearchParams])
+  const switchMode = (next: FocusMode) => { setContextNotice(null); void useFocusStore.getState().switchMode(next) }
   const toggleRun = () => {
-    if (busy) return
+    if (busy || !authReady || !userId) return
+    if (!timer.sessionId && taskId && timer.taskOwner !== userId) {
+      setContextNotice('当前关联来自其他账号，请重新选择任务或纯专注后再开始。')
+      return
+    }
+    setContextNotice(null)
     if (!running && 'Notification' in window && Notification.permission === 'default') {
       void Notification.requestPermission().catch(() => undefined)
     }
     void useFocusStore.getState().toggle()
   }
-  const reset = () => { void useFocusStore.getState().reset() }
-  const skip = () => { void useFocusStore.getState().skip() }
+  const reset = () => { setContextNotice(null); void useFocusStore.getState().reset() }
+  const skip = () => { setContextNotice(null); void useFocusStore.getState().skip() }
   // 专注白噪音(WebAudio 合成,Forest 氛围)
   const playerRef = useRef<NoisePlayer | null>(null)
   const [noiseOn, setNoiseOn] = useState(false)
@@ -255,11 +302,23 @@ export function FocusView() {
         <div className="flex flex-col gap-4 lg:col-span-2">
           <Card>
             <p className="mb-3 text-sm font-semibold tracking-wide text-txt-secondary">这次专注做什么?</p>
+            {contextNotice && (
+              <div role="status" className="mb-3 rounded-lg border border-accent/30 bg-accent-soft px-3 py-2 text-xs leading-relaxed text-txt-secondary">
+                <p>{contextNotice}</p>
+                <button type="button" onClick={() => setContextNotice(null)} className="mt-1 cursor-pointer text-accent hover:underline">知道了</button>
+              </div>
+            )}
+            {timer.sessionId && (
+              <p className="mb-3 text-xs leading-relaxed text-txt-muted">
+                本次关联：{!taskId ? '纯专注' : timer.taskOwner !== userId ? '其他账号的任务，请切回原账号查看' : selectedTask?.title ?? '任务已不可用'}（{running ? '计时中' : '已暂停'}）
+              </p>
+            )}
+            {selectedTask && <Link to={taskContextHref(selectedTask.id)} className="mb-3 inline-flex text-xs text-accent hover:underline">查看关联任务 →</Link>}
             {focusableTasks.length === 0 ? (
               <p className="py-4 text-center text-xs text-txt-muted">没有进行中的任务,也可以不带任务纯专注</p>
             ) : (
-              <Select value={taskId} disabled={Boolean(timer.sessionId) || busy} onChange={(e) => void useFocusStore.getState().selectTask(e.target.value, useAuthStore.getState().user?.id ?? '')}>
-                                <option value="">不关联任务(纯专注)</option>
+              <Select value={selectedTask ? taskId : ''} disabled={Boolean(timer.sessionId) || busy || !authReady || !userId} onChange={(e) => { setContextNotice(null); void useFocusStore.getState().selectTask(e.target.value, userId ?? '') }}>
+                <option value="">不关联任务(纯专注)</option>
                 {selectedTask && !focusableTasks.some((t) => t.id === selectedTask.id) && <option value={selectedTask.id}>{selectedTask.title}（本次已关联）</option>}
                 {focusableTasks.map((t) => (
                   <option key={t.id} value={t.id}>

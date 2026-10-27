@@ -1,5 +1,8 @@
-import { useEffect, useState, type FormEvent } from 'react'
-import { Check, Plus, X } from 'lucide-react'
+import { useLayoutEffect, useState, type FormEvent } from 'react'
+import { useNavigate } from 'react-router'
+import { focusContextHref } from '@/lib/contextLinks'
+import { taskInitialTags } from './taskFilters'
+import { Check, Play, Plus, X } from 'lucide-react'
 import { Modal } from '@/components/ui/Modal'
 import { Button } from '@/components/ui/Button'
 import { Input, Select, Textarea } from '@/components/ui/Input'
@@ -18,6 +21,7 @@ interface TaskModalProps {
   defaultStatus?: TaskStatus
   /** 新建模式的预设截止日期(日历点某天新建) */
   defaultDueDate?: string
+  defaultTag?: string
 }
 
 interface FormState {
@@ -42,15 +46,19 @@ const emptyForm: FormState = {
   subtasks: [],
 }
 
-export function TaskModal({ open, onClose, task, defaultStatus = 'todo', defaultDueDate }: TaskModalProps) {
+export function TaskModal({ open, onClose, task, defaultStatus = 'todo', defaultDueDate, defaultTag }: TaskModalProps) {
   const [form, setForm] = useState<FormState>(emptyForm)
+  const navigate = useNavigate()
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState('')
   const [tagInput, setTagInput] = useState('')
   const [subtaskInput, setSubtaskInput] = useState('')
   const [nlHint, setNlHint] = useState<string[]>([])
   const { add, update } = useTaskStore()
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!open) return
+    setError('')
     setTagInput('')
     setSubtaskInput('')
     setNlHint([])
@@ -62,19 +70,20 @@ export function TaskModal({ open, onClose, task, defaultStatus = 'todo', default
         priority: task.priority,
         dueDate: task.dueDate ?? '',
         recurrence: task.recurrence ?? 'none',
-        tags: [...task.tags],
+        tags: taskInitialTags(task, defaultTag),
         subtasks: task.subtasks.map((s) => ({ ...s })),
       })
     } else {
-      setForm({ ...emptyForm, status: defaultStatus, dueDate: defaultDueDate ?? '' })
+      setForm({ ...emptyForm, status: defaultStatus, dueDate: defaultDueDate ?? '', tags: taskInitialTags(null, defaultTag) })
     }
-  }, [open, task, defaultStatus, defaultDueDate])
+  }, [open, task, defaultStatus, defaultDueDate, defaultTag])
 
   const patch = (p: Partial<FormState>) => setForm((f) => ({ ...f, ...p }))
 
   const addTag = () => {
     const tag = tagInput.trim().replace(/^#/, '')
     if (tag && !form.tags.includes(tag)) patch({ tags: [...form.tags, tag] })
+    setError('')
     setTagInput('')
   }
 
@@ -87,7 +96,7 @@ export function TaskModal({ open, onClose, task, defaultStatus = 'todo', default
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault()
     const title = form.title.trim()
-    if (!title) return
+    if (!title || saving) return
     const payload = {
       title,
       description: form.description.trim(),
@@ -98,20 +107,29 @@ export function TaskModal({ open, onClose, task, defaultStatus = 'todo', default
       tags: form.tags,
       subtasks: form.subtasks,
     }
-    if (task) await update(task.id, payload)
-    else await add(payload)
-    onClose()
+    const goFocus = (e.nativeEvent as SubmitEvent).submitter?.getAttribute('data-focus') === 'true'
+    setSaving(true)
+    setError('')
+    try {
+      if (task) await update(task.id, payload)
+      else await add(payload)
+      onClose()
+      if (goFocus && task) navigate(focusContextHref(task.id))
+    } catch {
+      setError('保存失败，填写内容仍在这里，请重试。')
+    } finally { setSaving(false) }
   }
 
   const doneSubtasks = form.subtasks.filter((s) => s.done).length
 
   return (
-    <Modal open={open} onClose={onClose} title={task ? '编辑任务' : '新建任务'} className="max-w-xl">
-      <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+    <Modal open={open} onClose={() => { if (!saving) onClose() }} title={task ? '编辑任务' : '新建任务'} className="max-w-xl">
+      <form onSubmit={handleSubmit} aria-busy={saving} className="flex flex-col gap-4">
         <div>
           <label className="mb-1.5 block text-xs text-txt-secondary">标题 *</label>
           <Input
             autoFocus
+            aria-label="任务标题"
             value={form.title}
             onChange={(e) => patch({ title: e.target.value })}
             onBlur={() => {
@@ -138,6 +156,7 @@ export function TaskModal({ open, onClose, task, defaultStatus = 'todo', default
           <label className="mb-1.5 block text-xs text-txt-secondary">描述</label>
           <Textarea
             rows={2}
+            aria-label="任务描述"
             value={form.description}
             onChange={(e) => patch({ description: e.target.value })}
             placeholder="补充细节(可选)"
@@ -278,12 +297,14 @@ export function TaskModal({ open, onClose, task, defaultStatus = 'todo', default
           </div>
         </div>
 
-        <div className="mt-1 flex justify-end gap-2">
-          <Button type="button" variant="outline" onClick={onClose}>
+        {error && <p role="alert" className="text-sm text-danger">{error}</p>}
+        <div className="mt-1 flex flex-wrap justify-end gap-2">
+          {task && form.status !== 'done' && <Button type="submit" data-focus="true" variant="outline" disabled={saving || !form.title.trim()}><Play size={14} />保存并去专注</Button>}
+          <Button type="button" variant="outline" onClick={onClose} disabled={saving}>
             取消
           </Button>
-          <Button type="submit" variant="primary" disabled={!form.title.trim()}>
-            {task ? '保存' : '创建'}
+          <Button type="submit" variant="primary" disabled={saving || !form.title.trim()}>
+            {saving ? '保存中…' : task ? '保存' : '创建'}
           </Button>
         </div>
       </form>

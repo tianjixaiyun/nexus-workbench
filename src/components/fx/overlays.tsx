@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useNavigate as _useNavigate } from 'react-router'
 import { create } from 'zustand'
 import { cn } from '@/lib/utils'
+import { useReducedMotion, prefersReducedMotion } from '@/lib/useReducedMotion'
 
 /**
  * 全站级覆盖层:
@@ -21,7 +22,9 @@ const RIPPLE_CSS = `
 `
 
 export function GlobalRipple() {
+  const reduced = useReducedMotion()
   useEffect(() => {
+    if (reduced) return
     const style = document.createElement('style')
     style.textContent = RIPPLE_CSS
     document.head.appendChild(style)
@@ -54,7 +57,7 @@ export function GlobalRipple() {
       window.removeEventListener('pointerdown', onDown)
       style.remove()
     }
-  }, [])
+  }, [reduced])
   return null
 }
 
@@ -81,6 +84,7 @@ export function liquidNavigate(
   to: string,
   e?: { clientX: number; clientY: number },
 ) {
+  if (prefersReducedMotion()) { navigate(to); return }
   const s = useCurtain.getState()
   if (s.phase !== 'idle') {
     navigate(to)
@@ -95,10 +99,12 @@ export function liquidNavigate(
 }
 
 export function LiquidCurtain() {
+  const reduced = useReducedMotion()
   const { phase, x, y } = useCurtain()
   const covered = phase === 'cover'
   const revealing = phase === 'reveal'
   const pos = `${x * 100}% ${y * 100}%`
+  if (reduced) return null
 
   return (
     <div
@@ -152,15 +158,25 @@ export function LiquidCurtain() {
 const INTRO_KEY = 'nexus-dive-intro-done'
 
 export function DiveIntro() {
+  const reduced = useReducedMotion()
   const [state, setState] = useState<'run' | 'leave' | 'off'>(() =>
-    typeof sessionStorage !== 'undefined' && sessionStorage.getItem(INTRO_KEY) ? 'off' : 'run',
+    reduced || (typeof sessionStorage !== 'undefined' && sessionStorage.getItem(INTRO_KEY)) ? 'off' : 'run',
   )
   const [depth, setDepth] = useState(0)
   const timersRef = useRef<number[]>([])
 
   useEffect(() => {
+    if (reduced) {
+      try { sessionStorage.setItem(INTRO_KEY, '1') } catch { /* 当前标签内保持跳过 */ }
+      setState('off')
+      return
+    }
+    if (state === 'leave') {
+      const timer = window.setTimeout(() => setState('off'), 640)
+      return () => clearTimeout(timer)
+    }
     if (state !== 'run') return
-    sessionStorage.setItem(INTRO_KEY, '1')
+    try { sessionStorage.setItem(INTRO_KEY, '1') } catch { /* 当前会话仍可正常退出 */ }
     const start = Date.now()
     // 用 setInterval 而非 rAF:后台标签页 rAF 会被暂停,序幕就卡住了
     const timer = window.setInterval(() => {
@@ -170,16 +186,15 @@ export function DiveIntro() {
       if (t >= 1) {
         clearInterval(timer)
         timersRef.current.push(window.setTimeout(() => setState('leave'), 220))
-        timersRef.current.push(window.setTimeout(() => setState('off'), 900))
       }
     }, 40)
     return () => {
       clearInterval(timer)
       timersRef.current.forEach(clearTimeout)
     }
-  }, [state])
+  }, [state, reduced])
 
-  if (state === 'off') return null
+  if (state === 'off' || reduced) return null
 
   return (
     <div

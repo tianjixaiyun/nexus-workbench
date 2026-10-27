@@ -37,7 +37,7 @@ export function GoalsCard() {
         {withProgress.slice(0, 3).map(({ goal, progress }) => {
           const dl = goalDeadlineLabel(goal)
           return (
-            <div key={goal.id}>
+            <div key={goal.id} className="min-w-0">
               <div className="mb-1.5 flex items-center justify-between gap-2 text-xs">
                 <span className="truncate font-medium">
                   <span className="mr-1">{goal.emoji}</span>
@@ -56,6 +56,10 @@ export function GoalsCard() {
                   style={{ width: `${progress.percent}%`, background: GOAL_COLOR_META[goal.color].stroke }}
                 />
               </div>
+              {goal.mode === 'auto' && goal.tag && <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-xs text-accent">
+                <Link to={`/tasks?${new URLSearchParams({ tag: goal.tag })}`} aria-label={`查看目标「${goal.title}」的相关任务`} className="rounded hover:underline focus-visible:outline-2 focus-visible:outline-accent">查看相关任务</Link>
+                <Link to={`/tasks?${new URLSearchParams({ tag: goal.tag, create: '1' })}`} aria-label={`为目标「${goal.title}」添加下一步`} className="rounded hover:underline focus-visible:outline-2 focus-visible:outline-accent">添加下一步</Link>
+              </div>}
             </div>
           )
         })}

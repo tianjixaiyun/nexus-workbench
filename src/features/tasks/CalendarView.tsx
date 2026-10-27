@@ -15,6 +15,7 @@ import { activeTasks, useTaskStore } from '@/stores/taskStore'
 import { PRIORITY_STRIPE } from './taskMeta'
 
 interface CalendarViewProps {
+  tasks?: Task[]
   onEdit: (task: Task) => void
   onAddAt: (date: string) => void
 }
@@ -117,10 +118,10 @@ function DayCell({ dateKey: key, day, tasks, isToday, inMonth, onEdit, onAddAt }
   )
 }
 
-export function CalendarView({ onEdit, onAddAt }: CalendarViewProps) {
+export function CalendarView({ onEdit, onAddAt, tasks: displayedTasks }: CalendarViewProps) {
   const allTasks = useTaskStore((s) => s.tasks)
   const update = useTaskStore((s) => s.update)
-  const tasks = useMemo(() => activeTasks(allTasks), [allTasks])
+  const tasks = useMemo(() => displayedTasks ?? activeTasks(allTasks), [displayedTasks, allTasks])
   const [view, setView] = useState(() => {
     const d = new Date()
     return { year: d.getFullYear(), month: d.getMonth() }

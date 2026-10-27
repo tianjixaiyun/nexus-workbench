@@ -28,6 +28,8 @@ import { CommandPalette } from '@/components/CommandPalette'
 import { QuickCapture, QuickCaptureFab } from '@/components/QuickCapture'
 import { ShortcutsHelp } from '@/components/ShortcutsHelp'
 import { Toaster } from '@/components/Toaster'
+import { CalmModeToggle } from '@/components/CalmModeToggle'
+import { prefersReducedMotion } from '@/lib/useReducedMotion'
 
 const NAV_ITEMS = APP_MODULES
 
@@ -198,7 +200,7 @@ export function AppLayout() {
               if (e.ctrlKey || e.metaKey || e.shiftKey || e.altKey || e.button !== 0) return
               e.preventDefault()
               setMobileOpen(false)
-              if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) navigate(to)
+              if (prefersReducedMotion()) navigate(to)
               else liquidNavigate(navigate, to, e)
             }}
             title={compact ? label : undefined}
@@ -254,6 +256,7 @@ export function AppLayout() {
             <h1 className="truncate text-sm font-semibold tracking-wider text-txt-secondary">{title}</h1>
           </div>
           <div className="flex shrink-0 items-center gap-2 sm:gap-3">
+            <CalmModeToggle />
             <button
               type="button"
               onClick={(e) => {
@@ -303,7 +306,7 @@ export function AppLayout() {
                 <span className="ml-1 text-txt-muted">——去处理一下?</span>
               </span>
               <button
-                onClick={() => navigate('/tasks')}
+                onClick={() => navigate('/tasks?scope=today')}
                 className="cursor-pointer rounded-md bg-warn/20 px-2.5 py-1 font-medium text-warn transition-colors hover:bg-warn/30"
               >
                 查看

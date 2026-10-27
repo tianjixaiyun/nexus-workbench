@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { cn } from '@/lib/utils'
+import { useReducedMotion } from '@/lib/useReducedMotion'
 
 /**
  * 通用微交互组件套件:
@@ -18,10 +19,12 @@ export function ScrambleText({ text, delay = 0, speed = 34, className }: {
   speed?: number
   className?: string
 }) {
+  const reduced = useReducedMotion()
   const [shown, setShown] = useState('')
   const timerRef = useRef(0)
 
   useEffect(() => {
+    if (reduced) { setShown(text); return }
     let frame = 0
     let timer = 0
     let kickoff = 0
@@ -50,18 +53,21 @@ export function ScrambleText({ text, delay = 0, speed = 34, className }: {
       clearInterval(timer)
       clearInterval(timerRef.current)
     }
-  }, [text, delay, speed])
+  }, [text, delay, speed, reduced])
 
-  return <span className={className}>{shown || '\u00A0'}</span>
+  return <span className={className}>{reduced ? text : shown || '\u00A0'}</span>
 }
 
 // ---------- 磁性按钮 ----------
 export function Magnetic({ children, strength = 0.32, className }: { children: ReactNode; strength?: number; className?: string }) {
+  const reduced = useReducedMotion()
   const ref = useRef<HTMLSpanElement>(null)
+
+  useEffect(() => { if (reduced && ref.current) ref.current.style.transform = 'none' }, [reduced])
 
   const handleMove = (e: React.PointerEvent) => {
     const el = ref.current
-    if (!el) return
+    if (!el || reduced) return
     const rect = el.getBoundingClientRect()
     const dx = e.clientX - (rect.left + rect.width / 2)
     const dy = e.clientY - (rect.top + rect.height / 2)
@@ -86,11 +92,14 @@ export function Magnetic({ children, strength = 0.32, className }: { children: R
 
 // ---------- 3D 倾斜卡片 ----------
 export function TiltCard({ children, className, max = 7 }: { children: ReactNode; className?: string; max?: number }) {
+  const reduced = useReducedMotion()
   const ref = useRef<HTMLDivElement>(null)
+
+  useEffect(() => { if (reduced && ref.current) ref.current.style.transform = 'none' }, [reduced])
 
   const handleMove = (e: React.PointerEvent) => {
     const el = ref.current
-    if (!el) return
+    if (!el || reduced) return
     const rect = el.getBoundingClientRect()
     const px = (e.clientX - rect.left) / rect.width
     const py = (e.clientY - rect.top) / rect.height
@@ -123,10 +132,12 @@ export function TiltCard({ children, className, max = 7 }: { children: ReactNode
 
 // ---------- 数字滚动 ----------
 export function CountUp({ value, duration = 1100, className }: { value: number; duration?: number; className?: string }) {
+  const reduced = useReducedMotion()
   const [display, setDisplay] = useState(0)
   const fromRef = useRef(0)
 
   useEffect(() => {
+    if (reduced) { fromRef.current = value; setDisplay(value); return }
     const from = fromRef.current
     const start = Date.now()
     // setInterval 而非 rAF:后台/降帧环境也能稳定走完
@@ -140,17 +151,19 @@ export function CountUp({ value, duration = 1100, className }: { value: number; 
       }
     }, 33)
     return () => clearInterval(timer)
-  }, [value, duration])
+  }, [value, duration, reduced])
 
-  return <span className={className}>{display}</span>
+  return <span className={className}>{reduced ? value : display}</span>
 }
 
 // ---------- 滚动浮现(进入视口时上浮淡入,配 delay 做列表级联) ----------
 export function Reveal({ children, delay = 0, className }: { children: ReactNode; delay?: number; className?: string }) {
+  const reduced = useReducedMotion()
   const ref = useRef<HTMLDivElement>(null)
   const [shown, setShown] = useState(false)
 
   useEffect(() => {
+    if (reduced) { setShown(true); return }
     const el = ref.current
     if (!el) return
     const io = new IntersectionObserver(
@@ -164,15 +177,15 @@ export function Reveal({ children, delay = 0, className }: { children: ReactNode
     )
     io.observe(el)
     return () => io.disconnect()
-  }, [])
+  }, [reduced])
 
   return (
     <div
       ref={ref}
       className={cn('transition-all duration-700 ease-out', className)}
       style={{
-        opacity: shown ? 1 : 0,
-        transform: shown ? 'none' : 'translateY(26px)',
+        opacity: reduced || shown ? 1 : 0,
+        transform: reduced || shown ? 'none' : 'translateY(26px)',
         transitionDelay: `${delay}ms`,
       }}
     >

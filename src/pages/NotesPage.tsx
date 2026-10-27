@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { useSearchParams } from 'react-router'
 import { Dices, Loader2, Palette, Plus, Search, StickyNote, Waypoints } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
@@ -7,6 +8,7 @@ import { Input } from '@/components/ui/Input'
 import { Modal } from '@/components/ui/Modal'
 import type { Note } from '@/lib/data/types'
 import { consumeAction } from '@/lib/uiBus'
+import { removeContextParam, resolveContextEntity } from '@/lib/contextLinks'
 import { formatIsoDate } from '@/lib/utils'
 import { toast } from '@/stores/toastStore'
 import { activeNotes, sortNotes, useNoteStore } from '@/stores/noteStore'
@@ -26,6 +28,32 @@ export default function NotesPage() {
   const [random, setRandom] = useState<Note | null>(null)
   const [sketchOpen, setSketchOpen] = useState(false)
   const [showGraph, setShowGraph] = useState(false)
+  const [searchParams, setSearchParams] = useSearchParams()
+  const contextId = searchParams.get('note')
+  const handledContext = useRef<string | null>(null)
+  const [contextError, setContextError] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (contextId === null) { handledContext.current = null; return }
+    if (!loaded || handledContext.current === contextId) return
+    handledContext.current = contextId
+    const result = resolveContextEntity(allNotes, loaded, contextId)
+    if (result.kind === 'found') {
+      setContextError(null)
+      setEditing(result.entity)
+      setModalOpen(true)
+    } else {
+      setModalOpen(false)
+      setEditing(null)
+      setContextError(result.kind === 'deleted' ? '这篇便签已在回收站中，请先恢复后再打开。' : '没有找到这篇便签，可能已删除或当前账号无权查看。')
+      setSearchParams(removeContextParam(searchParams, 'note'), { replace: true })
+    }
+  }, [allNotes, loaded, contextId, searchParams, setSearchParams])
+
+  const closeEditor = () => {
+    setModalOpen(false)
+    if (searchParams.has('note')) setSearchParams(removeContextParam(searchParams, 'note'), { replace: true })
+  }
 
   // 随机回顾(flomo 式):随机翻出一条旧便签
   const surprise = () => {
@@ -73,11 +101,13 @@ export default function NotesPage() {
   }, [notes, search])
 
   const openCreate = () => {
+    setContextError(null)
     setEditing(null)
     setModalOpen(true)
   }
 
   const openEdit = (note: Note) => {
+    setContextError(null)
     setEditing(note)
     setModalOpen(true)
   }
@@ -93,6 +123,7 @@ export default function NotesPage() {
 
   return (
     <div className="flex flex-col gap-5">
+      {contextError && <p role="status" className="rounded-xl border border-warn/30 bg-warn/5 px-4 py-3 text-sm text-txt-secondary">{contextError}</p>}
       <div className="flex items-center gap-2">
         <div className="relative max-w-md min-w-52 flex-1">
           <Search size={15} className="absolute top-1/2 left-3 -translate-y-1/2 text-txt-muted" />
@@ -150,7 +181,7 @@ export default function NotesPage() {
         </div>
       )}
 
-      <NoteModal open={modalOpen} onClose={() => setModalOpen(false)} note={editing} />
+      <NoteModal open={modalOpen} onClose={closeEditor} note={editing} />
 
       <SketchModal open={sketchOpen} onClose={() => setSketchOpen(false)} />
 

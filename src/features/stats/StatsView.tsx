@@ -1,10 +1,11 @@
-import { useMemo, useRef, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { FileDown, FileUp, Loader2, Trophy } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
 import { Chart, chartPalette, darkChartBase } from '@/components/ui/Chart'
 import { isoToLocalDateStr, toDateStr } from '@/lib/utils'
-import { exportData, importData } from '@/lib/backup'
+import { exportData } from '@/lib/backup'
+import { requestBackupImport } from '@/lib/backupImport'
 import { useHabitStore } from '@/stores/habitStore'
 import { useDailyStore } from '@/stores/dailyStore'
 import { useSettingsStore } from '@/stores/settingsStore'
@@ -14,59 +15,29 @@ import { Heatmap, HeatmapLegend } from './Heatmap'
 import { WeeklyReviewCard } from './WeeklyReview'
 import { WrappedModal } from './WrappedModal'
 
-/** 备份导入导出区 */
+/** 数据看板与命令面板使用同一份校验和恢复预览。 */
 function BackupSection() {
-  const fileRef = useRef<HTMLInputElement>(null)
-  const [notice, setNotice] = useState('')
   const [busy, setBusy] = useState(false)
-
-  const handleImport = async (file: File) => {
-    if (!window.confirm('导入会替换当前全部数据(本地模式整库替换,云端模式追加创建),继续吗?建议先导出当前数据备份。')) return
+  const [notice, setNotice] = useState('')
+  const handleExport = async () => {
+    if (busy) return
     setBusy(true)
     setNotice('')
-    try {
-      const res = await importData(file)
-      setNotice(`导入成功:${res.counts},3 秒后刷新页面…`)
-      setTimeout(() => window.location.reload(), 3000)
-    } catch (err) {
-      setNotice(err instanceof Error ? err.message : '导入失败')
-    } finally {
-      setBusy(false)
-    }
+    try { await exportData(); setNotice('已请求下载，请确认浏览器已保存 JSON 文件。') }
+    catch (error) { setNotice(error instanceof Error ? error.message : '导出失败，请重试') }
+    finally { setBusy(false) }
   }
-
-  return (
-    <Card>
-      <p className="mb-1 text-sm font-semibold tracking-wide text-txt-secondary">数据备份</p>
-      <p className="mb-4 text-xs leading-relaxed text-txt-muted">
-        全部数据导出为一个 JSON 文件,换电脑或清缓存前先备份;导入会替换当前数据。
-      </p>
-      <div className="flex flex-wrap gap-2">
-        <Button variant="primary" onClick={() => void exportData()}>
-          <FileDown size={14} />
-          导出备份
-        </Button>
-        <Button variant="outline" onClick={() => fileRef.current?.click()} disabled={busy}>
-          <FileUp size={14} />
-          导入备份
-        </Button>
-      </div>
-      {notice && <p className="mt-3 text-xs text-accent">{notice}</p>}
-      <input
-        ref={fileRef}
-        type="file"
-        accept="application/json"
-        className="hidden"
-        onChange={(e) => {
-          const file = e.target.files?.[0]
-          if (file) void handleImport(file)
-          e.target.value = ''
-        }}
-      />
-    </Card>
-  )
+  return <Card>
+    <h2 className="mb-1 text-sm font-semibold tracking-wide text-txt-secondary">数据备份与恢复</h2>
+    <p className="mb-3 text-xs leading-relaxed text-txt-muted">导出 11 类业务记录，以及本机专注历史、日志、个人档案、作品集文案、留言、成就和偏好。认证凭据、PIN、缓存、活动计时与未保存草稿不在备份内。</p>
+    <p className="mb-4 text-xs leading-relaxed text-txt-muted">恢复前先校验并预览数量：本地替换所选集合，云端追加创建；本机补充数据可单独选择，默认不覆盖。</p>
+    <div className="flex flex-wrap gap-2">
+      <Button variant="primary" disabled={busy} onClick={() => void handleExport()}>{busy ? <Loader2 size={14} className="animate-spin" /> : <FileDown size={14} />}{busy ? '正在导出…' : '导出备份'}</Button>
+      <Button variant="outline" disabled={busy} onClick={requestBackupImport}><FileUp size={14} />恢复备份</Button>
+    </div>
+    {notice && <p role="status" className="mt-3 text-xs text-txt-secondary">{notice}</p>}
+  </Card>
 }
-
 export function StatsView() {
   const [wrappedOpen, setWrappedOpen] = useState(false)
   const allTasks = useTaskStore((s) => s.tasks)

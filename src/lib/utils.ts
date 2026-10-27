@@ -7,6 +7,8 @@ export function cn(...parts: Array<string | false | null | undefined>): string {
  * 防 javascript:/data:/vbscript: 等危险协议进入 markdown 渲染与链接中心。
  */
 export function isSafeUrl(url: string): boolean {
+  // 浏览器会忽略部分控制字符，先拒绝，避免危险协议伪装成相对地址。
+  if (/[\u0000-\u001f\u007f]/.test(url)) return false
   const m = /^[a-zA-Z][a-zA-Z0-9+.-]*:/.exec(url.trim())
   if (!m) return true
   return ['http:', 'https:', 'mailto:', 'tel:'].includes(m[0].toLowerCase())

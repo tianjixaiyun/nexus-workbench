@@ -100,7 +100,7 @@ export function CustomCursor() {
     }
   }, [reduced])
 
-  return (
+  return reduced ? null : (
     <>
       <div
         ref={ringRef}

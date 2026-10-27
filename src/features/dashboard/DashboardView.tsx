@@ -20,6 +20,7 @@ import { Card } from '@/components/ui/Card'
 import { Chart, chartPalette, darkChartBase } from '@/components/ui/Chart'
 import { cn, formatDate, greeting, isoToLocalDateStr, toDateStr, todayStr } from '@/lib/utils'
 import { todaySessions } from '@/lib/pomodoro'
+import { focusContextHref, noteContextHref, taskContextHref } from '@/lib/contextLinks'
 import { useFocusHistory } from '@/lib/useFocusHistory'
 import { useLinkStore } from '@/stores/linkStore'
 import { useSettingsStore } from '@/stores/settingsStore'
@@ -226,9 +227,9 @@ export function DashboardView() {
   const widgets: Record<DashboardWidgetId, ReactNode> = {
     today: (<Card className="flex h-full flex-col">
           <div className="mb-3 flex items-center justify-between">
-            <p className="text-sm font-semibold tracking-wide text-txt-secondary">今日到期</p>
-            <Link to="/tasks" className="flex items-center gap-0.5 text-xs text-accent hover:text-accent">
-              全部任务
+            <p className="text-sm font-semibold tracking-wide text-txt-secondary">今日行动</p>
+            <Link to="/tasks?scope=today" className="flex items-center gap-0.5 text-xs text-accent hover:text-accent">
+              查看全部
               <ChevronRight size={12} />
             </Link>
           </div>
@@ -240,17 +241,12 @@ export function DashboardView() {
           ) : (
             <div className="flex flex-col gap-1.5">
               {todayTasks.map((task) => (
-                <div
-                  key={task.id}
-                  className="group flex cursor-pointer items-center gap-2.5 rounded-xl px-2 py-2 transition-colors hover:bg-surface-2"
-                  onClick={() => void perform(() => toggleDone(task.id))}
-                >
-                  <span className="h-4 w-4 shrink-0 rounded-full border border-line-strong transition-colors group-hover:border-accent" />
-                  <p className="min-w-0 flex-1 truncate text-sm">{task.title}</p>
-                  <Badge tone={task.dueDate === today ? 'amber' : 'rose'}>
-                    {task.dueDate === today ? '今天' : formatDate(task.dueDate)}
-                  </Badge>
+                <div key={task.id} className="group flex items-center gap-2 rounded-xl px-2 py-2 hover:bg-surface-2">
+                  <button type="button" onClick={() => void perform(() => toggleDone(task.id))} aria-label={`完成任务：${task.title}`} className="h-5 w-5 shrink-0 cursor-pointer rounded-full border border-line-strong hover:border-accent focus-visible:outline-2 focus-visible:outline-accent" />
+                  <button type="button" onClick={() => navigate(taskContextHref(task.id))} aria-label={`打开任务：${task.title}`} className="min-w-0 flex-1 cursor-pointer truncate text-left text-sm hover:text-accent">{task.title}</button>
+                  <Badge tone={task.dueDate === today ? 'amber' : 'rose'}>{task.dueDate === today ? '今天' : formatDate(task.dueDate)}</Badge>
                   <Badge tone={PRIORITY_META[task.priority].tone}>{PRIORITY_META[task.priority].label}</Badge>
+                  <button type="button" onClick={() => navigate(focusContextHref(task.id))} aria-label={`专注任务：${task.title}`} title="去专注" className="shrink-0 cursor-pointer rounded-lg border border-line-2 p-1.5 text-txt-muted hover:text-accent"><TimerIcon size={13} /></button>
                 </div>
               ))}
             </div>
@@ -393,14 +389,14 @@ export function DashboardView() {
           ) : (
             <div className="flex flex-col gap-2">
               {recentNotes.map((note) => (
-                <div
+                <button type="button"
                   key={note.id}
-                  onClick={() => navigate('/notes')}
-                  className="cursor-pointer rounded-xl border border-line-1 bg-surface-1 px-3.5 py-2.5 transition-colors hover:border-line-3"
+                  onClick={() => navigate(noteContextHref(note.id))}
+                  className="cursor-pointer rounded-xl text-left border border-line-1 bg-surface-1 px-3.5 py-2.5 transition-colors hover:border-line-3"
                 >
-                  <p className="truncate text-sm font-medium">{note.title || '无标题'}</p>
-                  {note.content && <p className="mt-0.5 truncate text-xs text-txt-muted">{note.content}</p>}
-                </div>
+                  <span className="block truncate text-sm font-medium">{note.title || '无标题'}</span>
+                  {note.content && <span className="mt-0.5 block truncate text-xs text-txt-muted">{note.content}</span>}
+                </button>
               ))}
             </div>
           )}

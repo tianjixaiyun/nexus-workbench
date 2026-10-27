@@ -1,134 +1,140 @@
 import { isCloudMode } from './config'
 import { useSettingsStore } from '../stores/settingsStore'
+import { useAuthStore } from '../stores/authStore'
 import { toast } from '../stores/toastStore'
-import type {
-  WorkItem, Daily, Goal, Habit, LinkItem, Milestone, Note, Task, Memo, Expense, Contact } from './data/types'
 import { dataAdapter } from './data'
 import { db } from './data/localAdapter'
+import { FOCUS_STATE_KEY } from './focusTimer'
+import { collectDeviceBackup, restoreDeviceBackup, type DeviceBackupKey } from './deviceBackup'
+import { BACKUP_IMPORT_USER } from './backupImport'
+import { BACKUP_COLLECTIONS, BACKUP_LABELS, BACKUP_VERSION, validateBackup, type BackupCollection, type BackupFile, type PreparedBackup } from './backupValidation'
+import { todayStr } from './utils'
 
-const BACKUP_VERSION = 9
+export type { BackupFile } from './backupValidation'
+export interface ImportOptions {
+  collections?: BackupCollection[]
+  deviceKeys?: DeviceBackupKey[]
+  expectedUserId?: string | null
+}
+export interface ImportResult { counts: string; deviceWarning?: string }
 
-export interface BackupFile {
-  app: 'nexus-workbench'
-  version: number
-  exportedAt: string
-  tasks: Task[]
-  notes: Note[]
-  links: LinkItem[]
-  habits: Habit[]
-  milestones: Milestone[]
-  dailies: Daily[]
-  goals: Goal[]
-  works?: WorkItem[]
-  memos?: Memo[]
-  expenses?: Expense[]
-  contacts?: Contact[]
+function accountGuard(expected?: string | null) {
+  const userId = isCloudMode ? useAuthStore.getState().user?.id : null
+  if (isCloudMode && (!userId || expected !== undefined && expected !== userId)) throw new Error('账号已变化或尚未登录，请重新选择备份文件后预览')
+  let changed = false
+  const stop = isCloudMode ? useAuthStore.subscribe((state) => { if (state.user?.id !== userId) changed = true }) : () => undefined
+  return {
+    userId,
+    assert: () => { if (changed || isCloudMode && useAuthStore.getState().user?.id !== userId) throw new Error('账号会话已变化，已停止后续导入') },
+    stop,
+  }
 }
 
-/** 导出全部数据为 JSON 备份文件 */
+export function assertNoActiveFocus(): void {
+  const raw = localStorage.getItem(FOCUS_STATE_KEY)
+  if (!raw) return
+  let timer: { sessionId?: unknown; running?: unknown }
+  try { timer = JSON.parse(raw) ?? {} } catch { throw new Error('专注快照已损坏，请先到专注页面重置后再导入') }
+  if (timer.sessionId || timer.running === true) throw new Error('存在运行或暂停的专注，请先到专注页面重置，再导入备份')
+}
+
+export async function readBackup(file: File): Promise<PreparedBackup> {
+  if (file.size > 50 * 1024 * 1024) throw new Error('备份超过 50 MB，请先拆分过大的图片内容再导入；当前数据未改动')
+  let value: unknown
+  try { value = JSON.parse(await file.text()) } catch { throw new Error('文件不是有效 JSON，当前数据未改动') }
+  return validateBackup(value)
+}
+
+export async function currentBackupCounts(): Promise<Record<BackupCollection, number>> {
+  const guard = accountGuard()
+  try {
+    const entries = await Promise.all(BACKUP_COLLECTIONS.map(async (key) => [key, (await dataAdapter[key].list()).length] as const))
+    guard.assert()
+    return Object.fromEntries(entries) as Record<BackupCollection, number>
+  } finally { guard.stop() }
+}
+
+export async function createBackup(): Promise<BackupFile> {
+  const guard = accountGuard()
+  try {
+    const entries = await Promise.all(BACKUP_COLLECTIONS.map(async (key) => [key, await dataAdapter[key].list()] as const))
+    guard.assert()
+    const backup = { app: 'nexus-workbench', version: BACKUP_VERSION, exportedAt: new Date().toISOString(), ...Object.fromEntries(entries), deviceData: collectDeviceBackup() }
+    return validateBackup(backup).backup
+  } finally { guard.stop() }
+}
+
+/** 导出列明范围的业务数据和本机补充数据，不包含认证/PIN/缓存或活动计时。 */
 export async function exportData(): Promise<void> {
-  const [tasks, notes, links, habits, milestones, dailies, goals, works, memos, expenses, contacts] = await Promise.all([
-    dataAdapter.tasks.list(),
-    dataAdapter.notes.list(),
-    dataAdapter.links.list(),
-    dataAdapter.habits.list(),
-    dataAdapter.milestones.list(),
-    dataAdapter.dailies.list(),
-    dataAdapter.goals.list(),
-    dataAdapter.works.list(),
-    dataAdapter.memos.list(),
-    dataAdapter.expenses.list(),
-    dataAdapter.contacts.list(),
-  ])
-  const backup: BackupFile = {
-    app: 'nexus-workbench',
-    version: BACKUP_VERSION,
-    exportedAt: new Date().toISOString(),
-    tasks,
-    notes,
-    links,
-    habits,
-    milestones,
-    dailies,
-    goals,
-    works,
-    memos,
-    expenses,
-    contacts,
-  }
+  const backup = await createBackup()
   const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' })
   const url = URL.createObjectURL(blob)
-  const a = document.createElement('a')
-  a.href = url
-  a.download = `nexus-backup-${new Date().toISOString().slice(0, 10)}.json`
-  a.click()
-  URL.revokeObjectURL(url)
-  // 记录导出时间,供本地模式的「N 天未备份」提醒判断
+  const link = document.createElement('a')
+  link.href = url
+  link.download = `nexus-backup-${todayStr()}.json`
+  link.click()
+  setTimeout(() => URL.revokeObjectURL(url), 1000)
   useSettingsStore.getState().markExported()
-  toast.success('备份已导出', 'JSON 文件已保存到下载目录')
+  toast.success('备份下载已请求', '请确认浏览器已保存 JSON 文件，再清理或迁移数据')
 }
 
-function parseBackup(raw: unknown): BackupFile {
-  const b = raw as BackupFile
-  if (!b || b.app !== 'nexus-workbench' || !Array.isArray(b.tasks)) {
-    throw new Error('文件格式不对,请选择本应用导出的 JSON 备份')
-  }
-  return b
+/** 所有来源都先校验；UI 确认后传入所选集合，旧备份缺失集合默认保留。 */
+export async function importPreparedBackup(prepared: PreparedBackup, options: ImportOptions = {}): Promise<ImportResult> {
+  const { backup } = validateBackup(prepared.backup)
+  const selected = [...new Set(options.collections ?? prepared.presentCollections)]
+  if (selected.some((key) => !BACKUP_COLLECTIONS.includes(key))) throw new Error('恢复集合不受支持')
+  const deviceKeys = [...new Set(options.deviceKeys ?? [])]
+  if (deviceKeys.length && !backup.deviceData) throw new Error('这份旧备份没有本机补充数据')
+  if (deviceKeys.some((key) => !Object.hasOwn(backup.deviceData ?? {}, key))) throw new Error('所选本机补充数据不在备份内，当前数据未改动')
+  if (!selected.length && !deviceKeys.length) throw new Error('请至少选择一项要恢复的数据')
+  assertNoActiveFocus()
+  const guard = accountGuard(options.expectedUserId)
+  try {
+    if (!isCloudMode) {
+      if (selected.length) await db.transaction('rw', selected.map((key) => db.table(key)), async () => {
+        guard.assert()
+        assertNoActiveFocus()
+        for (const key of selected) {
+          const table = db.table(key)
+          await table.clear()
+          await table.bulkPut(backup[key])
+        }
+        guard.assert()
+        assertNoActiveFocus()
+      })
+    } else {
+      let imported = 0
+      for (const key of selected) {
+        const create = dataAdapter[key].create as (item: Record<PropertyKey, unknown>) => Promise<unknown>
+        for (let index = 0; index < backup[key].length; index++) {
+          try {
+            guard.assert()
+            assertNoActiveFocus()
+            await create({ ...backup[key][index], [BACKUP_IMPORT_USER]: guard.userId })
+            imported++
+            guard.assert()
+          } catch (error) {
+            const cause = error instanceof Error ? error.message : '写入失败'
+            throw new Error(`云端追加中断：已成功写入 ${imported} 条；${BACKUP_LABELS[key]}第 ${index + 1} 条未确认：${cause}。既有记录和成功写入的记录均保留，请核对后处理，避免直接重复导入。`)
+          }
+        }
+      }
+    }
+    const counts = selected.map((key) => `${BACKUP_LABELS[key]} ${backup[key].length}`).join(' · ') || '未改动业务集合'
+    let deviceWarning: string | undefined
+    if (deviceKeys.length) {
+      try {
+        guard.assert()
+        assertNoActiveFocus()
+        restoreDeviceBackup(backup.deviceData!, deviceKeys)
+      } catch (error) {
+        deviceWarning = `业务集合已完成恢复；${error instanceof Error ? error.message : '本机补充数据恢复失败'}。不要重复导入业务集合。`
+      }
+    }
+    return { counts, ...(deviceWarning ? { deviceWarning } : {}) }
+  } finally { guard.stop() }
 }
 
-/**
- * 导入备份(整库替换,导入前请先导出当前数据做备份)。
- * 本地模式:按原 ID 整批写入 IndexedDB;云端模式:逐条重建。
- */
-export async function importData(file: File): Promise<{ counts: string }> {
-  const backup = parseBackup(JSON.parse(await file.text()))
-  const n = (arr: unknown[]) => arr.length
-
-  if (!isCloudMode) {
-    await // @ts-expect-error Dexie 类型签名最多标注 7 张表,运行时支持更多
-      db.transaction('rw', db.tasks, db.notes, db.links, db.habits, db.milestones, db.dailies, db.goals, db.works, db.memos, db.expenses, db.contacts, async () => {
-      await Promise.all([
-        db.tasks.clear(),
-        db.notes.clear(),
-        db.links.clear(),
-        db.habits.clear(),
-        db.milestones.clear(),
-        db.dailies.clear(),
-        db.goals.clear(),
-        db.works.clear(),
-        db.memos.clear(),
-        db.expenses.clear(),
-        db.contacts.clear(),
-      ])
-      if (backup.tasks.length) await db.tasks.bulkPut(backup.tasks)
-      if (backup.notes.length) await db.notes.bulkPut(backup.notes)
-      if (backup.links.length) await db.links.bulkPut(backup.links)
-      if (backup.habits.length) await db.habits.bulkPut(backup.habits)
-      if (backup.milestones.length) await db.milestones.bulkPut(backup.milestones)
-      if (backup.dailies.length) await db.dailies.bulkPut(backup.dailies)
-      if (backup.goals.length) await db.goals.bulkPut(backup.goals)
-      if (backup.works?.length) await db.works.bulkPut(backup.works)
-      if (backup.memos?.length) await db.memos.bulkPut(backup.memos)
-      if (backup.expenses?.length) await db.expenses.bulkPut(backup.expenses)
-      if (backup.contacts?.length) await db.contacts.bulkPut(backup.contacts)
-    })
-  } else {
-    // 云端:逐条重建(保留创建时间的展示字段由服务端生成)
-    for (const t of backup.tasks) await dataAdapter.tasks.create({ ...t, title: t.title })
-    for (const item of backup.notes) await dataAdapter.notes.create({ title: item.title, content: item.content, color: item.color, pinned: item.pinned })
-    for (const l of backup.links) await dataAdapter.links.create({ name: l.name, url: l.url, group: l.group })
-    for (const h of backup.habits) await dataAdapter.habits.create({ name: h.name, icon: h.icon, color: h.color, dates: h.dates })
-    for (const m of backup.milestones) await dataAdapter.milestones.create({ title: m.title, date: m.date, emoji: m.emoji })
-    for (const d of backup.dailies) await dataAdapter.dailies.create({ date: d.date, mood: d.mood, note: d.note })
-    for (const g of backup.goals) await dataAdapter.goals.create({ title: g.title, emoji: g.emoji, color: g.color, tag: g.tag, mode: g.mode, manualProgress: g.manualProgress, deadline: g.deadline })
-    for (const w of backup.works ?? []) await dataAdapter.works.create({ title: w.title, category: w.category, year: w.year, description: w.description, images: w.images, link: w.link })
-    for (const m of backup.memos ?? []) await dataAdapter.memos.create({ content: m.content, tags: m.tags, pinned: m.pinned })
-    for (const e of backup.expenses ?? []) await dataAdapter.expenses.create({ kind: e.kind, amount: e.amount, category: e.category, note: e.note, date: e.date })
-    for (const c of backup.contacts ?? []) await dataAdapter.contacts.create({ name: c.name, company: c.company, role: c.role, tags: c.tags, email: c.email, phone: c.phone, note: c.note, lastContactAt: c.lastContactAt, nextFollowUp: c.nextFollowUp })
-  }
-
-  const counts = `任务 ${n(backup.tasks)} · 笔记 ${n(backup.notes)} · 链接 ${n(backup.links)} · 习惯 ${n(backup.habits)} · 倒数日 ${n(backup.milestones)} · 作品 ${n(backup.works ?? [])} · 碎碎念 ${n(backup.memos ?? [])} · 记账 ${n(backup.expenses ?? [])} · 人脉 ${n(backup.contacts ?? [])}`
-  toast.success('导入成功', `${counts} —— 页面即将刷新`)
-
-  return { counts }
+export async function importData(file: File, options?: ImportOptions): Promise<ImportResult> {
+  return importPreparedBackup(await readBackup(file), options)
 }
