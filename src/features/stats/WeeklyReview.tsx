@@ -48,7 +48,7 @@ export function WeeklyReviewCard() {
   const mood = todayMood(dailies)
   const [moodError, setMoodError] = useState('')
 
-  // 评语用提示词模板生成:稳定骨架 + 数据槽位(2026 提示词最佳实践)
+  // 用固定文案填入统计值，不调用语言模型。
   const comment = useMemo(() => {
     const slots = [
       { name: 'done', value: String(week.tasksDone) },

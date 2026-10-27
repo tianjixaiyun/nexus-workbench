@@ -69,6 +69,7 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
       { key: 'action:batch-task', group: '操作', label: '批量添加任务', keywords: 'batch bulk paste import 批量 添加 粘贴 清单', icon: <ListChecks size={15} />, run: () => { onClose(); window.dispatchEvent(new CustomEvent('nexus:capture', { detail: 'batch' })) } },
       { key: 'action:note', group: '操作', label: '新建便签', keywords: 'new add create 新建 添加 便签 笔记', icon: <Plus size={15} />, run: () => { requestAction('new-note'); go('/notes') } },
       { key: 'action:assistant', group: '操作', label: '问问助手（基于你的数据）', keywords: 'ai assistant 助手 问问 智能 帮我分析', icon: <Bot size={15} />, run: () => { onClose(); window.dispatchEvent(new CustomEvent('nexus:assistant')) } },
+      { key: 'action:prompts', group: '操作', label: '提示词工坊', keywords: 'prompt ai 提示词 优化 拆解 规划 产品 复盘', icon: <Bot size={15} />, run: () => { onClose(); window.dispatchEvent(new CustomEvent('nexus:assistant', { detail:'prompts' })) } },
       { key: 'action:pin', group: '操作', label: '隐私锁 · 开启/关闭', keywords: 'pin lock 隐私 锁屏 密码', icon: <Bot size={15} />, run: () => { onClose(); window.dispatchEvent(new CustomEvent('nexus:pin-setup')) } },
       { key: 'action:export', group: '操作', label: '导出数据备份（JSON）', keywords: 'export backup 导出 备份 下载', icon: <FileDown size={15} />, run: async () => { await exportData(); onClose() } },
       { key: 'action:import', group: '操作', label: '导入数据备份', keywords: 'import restore 导入 恢复', icon: <FileUp size={15} />, run: () => { onClose(); requestBackupImport() } },

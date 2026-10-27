@@ -58,6 +58,8 @@ export function AppLayout() {
   const [quickOpen, setQuickOpen] = useState(false)
   const [quickBatch, setQuickBatch] = useState(false)
   const [assistantOpen, setAssistantOpen] = useState(false)
+  const [assistantTab, setAssistantTab] = useState<'analysis'|'prompts'>('analysis')
+  useEffect(() => { setAssistantOpen(false) }, [owner])
   const [dueDismissed, setDueDismissed] = useState(() => { try { return sessionStorage.getItem('nexus-due-dismissed') === '1' } catch { return false } })
   const location = useLocation()
   const navigate = useNavigate()
@@ -137,6 +139,7 @@ export function AppLayout() {
         setQuickOpen(true)
       } else if (key === 'a') {
         e.preventDefault()
+        setAssistantTab('analysis')
         setAssistantOpen(true)
       } else if (key === 'n' || key === 'm') {
         e.preventDefault()
@@ -149,7 +152,7 @@ export function AppLayout() {
   }, [navigate, paletteOpen, assistantOpen])
   // 命令面板「问问助手」动作
   useEffect(() => {
-    const open = () => setAssistantOpen(true)
+    const open = (event: Event) => { setAssistantTab((event as CustomEvent).detail==='prompts'?'prompts':'analysis'); setAssistantOpen(true) }
     window.addEventListener('nexus:assistant', open)
     return () => window.removeEventListener('nexus:assistant', open)
   }, [])
@@ -347,11 +350,13 @@ export function AppLayout() {
       {user && <QuickCapture key={user.id} open={quickOpen} initialBatch={quickBatch} onClose={() => setQuickOpen(false)} />}
       {user && <QuickCaptureFab onClick={() => { setQuickBatch(false); setQuickOpen(true) }} />}
       {ready && user && location.pathname !== '/settings' && <OnboardingModal />}
-      <AssistantPanel
+      {user && <AssistantPanel
+        key={`assistant:${user.id}`}
         open={assistantOpen}
+        initialTab={assistantTab}
         onClose={() => setAssistantOpen(false)}
         onNavigate={(to) => navigate(to)}
-      />
+      />}
       <ShortcutsHelp open={helpOpen} onClose={() => setHelpOpen(false)} />
       <Toaster />
     </div>
