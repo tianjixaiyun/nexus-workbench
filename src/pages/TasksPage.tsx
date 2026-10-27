@@ -163,7 +163,7 @@ export default function TasksPage() {
         <div className="flex rounded-xl border border-line-2 bg-surface-1 p-1" role="group" aria-label="任务显示方式">
           {VIEWS.map(({ value, label, icon: Icon }) => <button key={value} type="button" onClick={() => switchView(value)} aria-pressed={view === value} className={cn('flex cursor-pointer items-center gap-1 rounded-lg px-2 py-1.5 text-xs transition-all focus-visible:outline-2 focus-visible:outline-accent sm:gap-1.5 sm:px-3', view === value ? 'bg-surface-4 text-txt-primary' : 'text-txt-muted hover:text-txt-secondary')}><Icon size={14} />{label}</button>)}
         </div>
-        <Button variant="primary" className="shrink-0 px-2 sm:px-3" onClick={() => openCreate()}><Plus size={15} />新建任务</Button>
+        <Button variant="primary" size="sm" aria-label="新建任务" className="shrink-0" onClick={() => openCreate()}><Plus size={15} /><span className="sm:hidden">新建</span><span className="hidden sm:inline">新建任务</span></Button>
       </div>
 
       <div className="flex min-w-0 flex-nowrap gap-1.5 overflow-x-auto pb-1" role="group" aria-label="任务行动视图">
@@ -187,8 +187,8 @@ export default function TasksPage() {
         <div className="mt-2 flex items-center justify-between gap-2"><span className="text-xs text-txt-muted">{view === 'kanban' ? '看板内保持手动拖拽顺序' : '筛选会即时应用'}</span><Button size="sm" variant="ghost" onClick={() => setTemplateOpen(true)}><LayoutTemplate size={14} />从模板新建</Button></div>
       </div>}
       <div className="flex flex-wrap items-center justify-between gap-1.5">
-        <div className="flex flex-wrap items-center gap-2"><TaskSavedViews key={ownerKey ?? 'waiting'} owner={viewOwner} params={params} view={view} onRestore={restoreView} /><Button size="sm" variant="ghost" onClick={() => window.dispatchEvent(new CustomEvent('nexus:capture', { detail: 'batch' }))}><CopyPlus size={14} />批量添加</Button></div>
-        <span className="whitespace-nowrap text-xs text-txt-secondary" role="status" title={TASK_SCOPES.find(scope => scope.value === filters.scope)?.hint}>当前 {filtered.length} 项</span>
+        <TaskSavedViews key={ownerKey ?? 'waiting'} owner={viewOwner} params={params} view={view} onRestore={restoreView} />
+        <div className="flex items-center gap-2"><Button size="sm" variant="ghost" onClick={() => window.dispatchEvent(new CustomEvent('nexus:capture', { detail: 'batch' }))}><CopyPlus size={14} />批量添加</Button><span className="whitespace-nowrap text-xs text-txt-secondary" role="status" title={TASK_SCOPES.find(scope => scope.value === filters.scope)?.hint}>当前 {filtered.length} 项</span></div>
       </div>
       {chips.length > 0 && <div aria-label="当前生效的筛选条件" className="flex flex-wrap gap-1.5">{chips.map(chip => <button key={chip.key} type="button" onClick={() => changeFilters({ [chip.key]: DEFAULT_FILTERS[chip.key] })} aria-label={`移除筛选：${chip.label}`} title={chip.label} className="inline-flex min-h-8 max-w-full cursor-pointer items-center gap-1 rounded-lg border border-accent/25 bg-accent-soft px-2 text-xs text-accent focus-visible:outline-2 focus-visible:outline-accent"><span className="max-w-48 truncate">{chip.label}</span><X size={12} className="shrink-0" /></button>)}{hasFilters && <Button size="sm" variant="ghost" onClick={() => changeFilters(DEFAULT_FILTERS)}>清除筛选</Button>}</div>}
 
