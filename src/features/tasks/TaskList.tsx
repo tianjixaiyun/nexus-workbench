@@ -11,6 +11,7 @@ import type { Task } from '@/lib/data/types'
 import { cn, formatDate, isOverdue } from '@/lib/utils'
 import { useTaskStore } from '@/stores/taskStore'
 import { PRIORITY_META, STATUS_META } from './taskMeta'
+import { RescheduleDialog } from './RescheduleDialog'
 
 interface TaskListProps {
   tasks: Task[]
@@ -26,6 +27,8 @@ export function TaskList({ tasks, onEdit }: TaskListProps) {
   const [deleteId, setDeleteId] = useState<string | null>(null)
   const [expandedId, setExpandedId] = useState<string | null>(null)
   const [error, setError] = useState('')
+  const [reschedule, setReschedule] = useState<Task[] | null>(null)
+  const [notice, setNotice] = useState('')
   const selectedTasks = tasks.filter(task => selected.has(task.id))
   const performAction = async (action: () => Promise<unknown>) => {
     setError('')
@@ -36,10 +39,13 @@ export function TaskList({ tasks, onEdit }: TaskListProps) {
   return (
     <div className="flex flex-col gap-4">
       {error && <p role="alert" className="rounded-xl border border-danger/40 p-3 text-xs text-danger">{error}</p>}
+      {notice && <p role="status" className="rounded-xl border border-accent/30 p-3 text-xs text-txt-secondary">{notice}</p>}
       {/* 批量操作条 */}
       {bulkMode && (
         <div className="flex flex-wrap items-center gap-2 rounded-xl border border-accent/30 bg-accent-soft/40 px-3 py-2">
           <span className="text-xs text-accent">已选 {selectedTasks.length} 项</span>
+          <button type="button" onClick={() => setSelected(selectedTasks.length === tasks.length ? new Set() : new Set(tasks.map(task => task.id)))} disabled={!tasks.length} className="min-h-8 rounded-lg border border-line-2 px-3 text-xs text-txt-primary disabled:opacity-40">{selectedTasks.length === tasks.length && tasks.length ? '取消全选' : '全选当前列表'}</button>
+          <button type="button" onClick={() => { setNotice(''); setReschedule(selectedTasks) }} disabled={!selectedTasks.length} className="min-h-8 rounded-lg border border-line-2 px-3 text-xs text-txt-primary hover:border-accent disabled:opacity-40">批量改期</button>
           <button
             onClick={() => void performAction(async () => {
               for (const task of selectedTasks) if (task.status !== 'done') await toggleDone(task.id)
@@ -179,6 +185,7 @@ export function TaskList({ tasks, onEdit }: TaskListProps) {
                 </div>
 
                 {!done && !bulkMode && <Link to={focusContextHref(task.id)} onClick={event => event.stopPropagation()} aria-label={`去专注：${task.title}`} title="带着这项任务进入专注，不会自动开始计时" className="flex min-h-8 min-w-8 shrink-0 items-center justify-center gap-1 rounded-lg border border-line-2 p-2 text-xs text-accent hover:bg-accent-soft focus-visible:outline-2 focus-visible:outline-accent"><Play size={13} /><span className="hidden md:inline">专注</span></Link>}
+                {!bulkMode && <button type="button" aria-label={`重新安排：${task.title}`} title="重新安排日期" onClick={event => { event.stopPropagation(); setNotice(''); setReschedule([task]) }} className="flex min-h-9 min-w-9 shrink-0 items-center justify-center rounded-lg border border-line-2 text-txt-secondary hover:border-accent hover:text-accent focus-visible:outline-2 focus-visible:outline-accent"><Calendar size={15} /></button>}
                 <details className="relative shrink-0" onClick={event => event.stopPropagation()} onKeyDown={event => { if (event.key === 'Escape') { event.currentTarget.removeAttribute('open'); event.currentTarget.querySelector('summary')?.focus() } }}>
                   <summary aria-label={`更多操作：${task.title}`} className="flex h-8 w-8 cursor-pointer list-none items-center justify-center rounded-lg text-txt-secondary hover:bg-surface-3 focus-visible:outline-2 focus-visible:outline-accent"><MoreHorizontal size={18} /></summary>
                   <div className="absolute top-full right-0 z-20 mt-1 min-w-36 rounded-xl border border-line-2 bg-ink-900 p-1 shadow-xl">
@@ -202,6 +209,7 @@ export function TaskList({ tasks, onEdit }: TaskListProps) {
           setDeleteId(null)
         }}
       />
+      {reschedule && <RescheduleDialog targets={reschedule} onClose={() => setReschedule(null)} onSaved={ids => { if (ids.length) { setSelected(previous => { const next = new Set(previous); ids.forEach(id => next.delete(id)); return next }); setNotice(`已保存 ${ids.length} 项任务的日期。`) } }} />}
     </div>
   )
 }
