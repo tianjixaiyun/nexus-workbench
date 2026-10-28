@@ -11,6 +11,10 @@ export function createTaskDraft(task: Task): TaskDraft {
   return { title: task.title, description: task.description, status: task.status, priority: task.priority, dueDate: task.dueDate ?? '', dueTime: task.dueTime ?? '', recurrence: task.recurrence ?? 'none', tags: [...(task.tags ?? [])], subtasks: (task.subtasks ?? []).map(item => ({ ...item })) }
 }
 
+export function duplicateTaskDraft(draft: TaskDraft, newId: () => string): TaskDraft {
+  return { ...draft, status: 'todo', recurrence: 'none', tags: [...draft.tags], subtasks: draft.subtasks.map(item => ({ ...item, id: newId(), done: false })) }
+}
+
 /** Keep an already-open editor available for copying its draft after remote deletion. */
 export function retainTaskEditor(previous: Task | null, requestedId: string | null, found: Task | undefined, scope?: { previous: string | null; current: string | null }): Task | null {
   if (scope && (!scope.current || scope.previous !== scope.current)) return null

@@ -2,7 +2,7 @@ import { useLayoutEffect, useRef, useState, type FormEvent } from 'react'
 import { useNavigate } from 'react-router'
 import { focusContextHref } from '@/lib/contextLinks'
 import { taskInitialTags } from './taskFilters'
-import { createTaskDraft, shouldInitializeTaskDraft, taskDraftConflict, type TaskDraft } from './taskDraft'
+import { createTaskDraft, duplicateTaskDraft, shouldInitializeTaskDraft, taskDraftConflict, type TaskDraft } from './taskDraft'
 import { Check, Play, Plus, X } from 'lucide-react'
 import { Modal } from '@/components/ui/Modal'
 import { Button } from '@/components/ui/Button'
@@ -44,6 +44,8 @@ const emptyForm: FormState = {
 export function TaskModal({ open, onClose, task, defaultStatus = 'todo', defaultDueDate, defaultTag, unavailable = false }: TaskModalProps) {
   const [form, setForm] = useState<FormState>(emptyForm)
   const navigate = useNavigate()
+  const [duplicating, setDuplicating] = useState(false)
+  const editingTask = duplicating ? null : task
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
   const [tagInput, setTagInput] = useState('')
@@ -61,6 +63,7 @@ export function TaskModal({ open, onClose, task, defaultStatus = 'todo', default
     cycle.current = nextCycle
     if (!initialize) return
     setError('')
+    setDuplicating(false)
     setDiscardPrompt(false)
     setTagInput('')
     setSubtaskInput('')
@@ -72,11 +75,11 @@ export function TaskModal({ open, onClose, task, defaultStatus = 'todo', default
   }, [open, task, defaultStatus, defaultDueDate, defaultTag])
 
   const patch = (p: Partial<FormState>) => setForm((f) => ({ ...f, ...p }))
-  const conflict = task && baselineTask.current
-    ? unavailable ? 'missing' : loaded ? taskDraftConflict(baselineTask.current, tasks.find(item => item.id === task.id)) : null
+  const conflict = editingTask && baselineTask.current
+    ? unavailable ? 'missing' : loaded ? taskDraftConflict(baselineTask.current, tasks.find(item => item.id === editingTask.id)) : null
     : null
   const cannotSave = conflict === 'missing' || conflict === 'deleted'
-  const dirty = JSON.stringify(form) !== initialDraft.current || Boolean(tagInput.trim()) || Boolean(subtaskInput.trim())
+  const dirty = duplicating || JSON.stringify(form) !== initialDraft.current || Boolean(tagInput.trim()) || Boolean(subtaskInput.trim())
   const requestClose = () => {
     if (saving) return
     if (dirty) setDiscardPrompt(true)
@@ -106,8 +109,8 @@ export function TaskModal({ open, onClose, task, defaultStatus = 'todo', default
     e.preventDefault()
     const title = form.title.trim()
     if (!title || saving) return
-    if (task) {
-      const latest = useTaskStore.getState().tasks.find(item => item.id === task.id)
+    if (editingTask) {
+      const latest = useTaskStore.getState().tasks.find(item => item.id === editingTask.id)
       if (unavailable || !latest || latest.deletedAt) {
         setError('这项任务已删除或暂时不可用，草稿已保留；请复制草稿后关闭核对。')
         return
@@ -119,7 +122,7 @@ export function TaskModal({ open, onClose, task, defaultStatus = 'todo', default
       status: form.status,
       priority: form.priority,
       dueDate: form.dueDate || null,
-      ...(form.dueTime || task?.dueTime ? { dueTime: form.dueDate ? form.dueTime || null : null } : {}),
+      ...(form.dueTime || editingTask?.dueTime ? { dueTime: form.dueDate ? form.dueTime || null : null } : {}),
       recurrence: form.recurrence,
       tags: form.tags,
       subtasks: form.subtasks,
@@ -128,21 +131,22 @@ export function TaskModal({ open, onClose, task, defaultStatus = 'todo', default
     setSaving(true)
     setError('')
     try {
-      if (task) await update(task.id, payload)
+      if (editingTask) await update(editingTask.id, payload)
       else await add(payload)
       onClose()
-      if (goFocus && task) navigate(focusContextHref(task.id))
+      if (goFocus && editingTask) navigate(focusContextHref(editingTask.id))
     } catch {
-      setError(form.dueTime ? '保存失败，填写内容仍在这里。请检查连接；已有云端项目需先在设置中执行任务时间更新 SQL。' : '保存失败，填写内容仍在这里，请重试。')
+      setError(duplicating ? '未能确认创建结果，草稿仍在这里。请先检查任务列表，避免重复创建。' : form.dueTime ? '保存失败，填写内容仍在这里。请检查连接；已有云端项目需先在设置中执行任务时间更新 SQL。' : '保存失败，填写内容仍在这里，请重试。')
     } finally { setSaving(false) }
   }
 
   const doneSubtasks = form.subtasks.filter((s) => s.done).length
 
   return (
-    <Modal open={open} onClose={requestClose} title={task ? '编辑任务' : '新建任务'} className="max-w-xl">
+    <Modal open={open} onClose={requestClose} title={duplicating ? '创建任务副本' : task ? '编辑任务' : '新建任务'} className="max-w-xl">
       <form onSubmit={handleSubmit} aria-busy={saving} className="flex flex-col gap-4">
         {discardPrompt && <div role="alert" className="rounded-xl border border-warn/40 bg-warn/10 p-3 text-sm text-txt-secondary"><p>还有未保存的填写内容，确定放弃并关闭吗？</p><div className="mt-2 flex flex-wrap gap-2"><Button type="button" size="sm" variant="outline" onClick={() => setDiscardPrompt(false)}>继续编辑</Button><Button type="button" size="sm" variant="danger" onClick={onClose}>放弃并关闭</Button></div></div>}
+        {duplicating && <p role="status" className="rounded-xl border border-accent/30 bg-accent/10 p-3 text-xs leading-relaxed text-txt-secondary">已保留当前填写的内容和截止时间，完成状态及重复规则已重置；确认后才会创建新任务。</p>}
         {conflict === 'changed' && <p role="status" className="rounded-xl border border-warn/40 bg-warn/10 p-3 text-xs leading-relaxed text-txt-secondary">任务在其他位置有更新，当前草稿已保留。保存会使用你现在填写的内容；关闭后重新打开可查看最新版本。</p>}
         {cannotSave && <div role="alert" className="rounded-xl border border-danger/40 p-3 text-xs leading-relaxed text-txt-secondary"><p>这项任务已删除或暂时不可用。草稿仍在这里，无法覆盖保存；请复制后关闭核对。</p><Button type="button" size="sm" variant="outline" className="mt-2" onClick={() => void copyDraft()}>复制草稿</Button></div>}
         <div>
@@ -321,12 +325,13 @@ export function TaskModal({ open, onClose, task, defaultStatus = 'todo', default
 
         {error && <p role="alert" className="text-sm text-danger">{error}</p>}
         <div className="mt-1 flex flex-wrap justify-end gap-2">
-          {task && form.status !== 'done' && <Button type="submit" data-focus="true" variant="outline" disabled={saving || cannotSave || !form.title.trim()}><Play size={14} />保存并去专注</Button>}
+          {editingTask && <Button type="button" variant="outline" disabled={saving} onClick={() => { setForm(current => duplicateTaskDraft(current, uid)); setDuplicating(true); setError(''); setDiscardPrompt(false) }}>复制为新任务</Button>}
+          {editingTask && form.status !== 'done' && <Button type="submit" data-focus="true" variant="outline" disabled={saving || cannotSave || !form.title.trim()}><Play size={14} />保存并去专注</Button>}
           <Button type="button" variant="outline" onClick={requestClose} disabled={saving}>
             取消
           </Button>
           <Button type="submit" variant="primary" disabled={saving || cannotSave || !form.title.trim()}>
-            {saving ? '保存中…' : task ? '保存' : '创建'}
+            {saving ? '保存中…' : editingTask ? '保存' : '创建'}
           </Button>
         </div>
       </form>
