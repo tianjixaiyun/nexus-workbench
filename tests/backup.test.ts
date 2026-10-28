@@ -55,10 +55,20 @@ it('backs up and restores the agenda task view preference', async () => {
   expect(localStorage.getItem('nexus:task-view')).toBe('agenda')
 })
 
+it('backs up and restores locally created task templates only when selected', async () => {
+  const templates = [{ id: 'custom-1', name: '出行', items: [{ title: '拿证件' }] }]
+  localStorage.setItem('nexus:task-templates', JSON.stringify(templates))
+  const exported = await createBackup()
+  expect(exported.deviceData?.['nexus:task-templates']).toEqual(templates)
+  localStorage.setItem('nexus:task-templates', '[]')
+  await importData(file(exported), { deviceKeys: ['nexus:task-templates'] })
+  expect(JSON.parse(localStorage.getItem('nexus:task-templates')!)).toEqual(templates)
+})
+
 it('preserves task times in local storage and backup while accepting old tasks', async () => {
   await localAdapter.tasks.create({ title: '有时间', dueDate: '2026-12-31', dueTime: '09:30' })
   const exported = await createBackup()
-  expect(exported.version).toBe(11)
+  expect(exported.version).toBe(12)
   expect(exported.tasks[0].dueTime).toBe('09:30')
   await importData(file(exported))
   expect((await localAdapter.tasks.list())[0].dueTime).toBe('09:30')
@@ -170,7 +180,7 @@ it('exports and restores all eleven real collections plus selected focus history
   localStorage.setItem('nexus:pomodoro', JSON.stringify(history))
   localStorage.setItem('nexus:journal', JSON.stringify(logs))
   const exported = await createBackup()
-  expect(exported.version).toBe(11)
+  expect(exported.version).toBe(12)
   await Promise.all(db.tables.map((table) => table.clear()))
   localStorage.removeItem('nexus:pomodoro')
   localStorage.removeItem('nexus:journal')

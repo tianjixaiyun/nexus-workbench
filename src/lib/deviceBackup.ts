@@ -1,6 +1,7 @@
 import { DASHBOARD_WIDGETS, normalizeDashboardLayout } from '@/features/dashboard/dashboardLayout'
 import { FOCUS_STATE_KEY, newFocusTimer, normalizeFocusConfig } from './focusTimer'
 import { isSafeUrl } from './utils'
+import { validateCustomTemplates } from '@/features/tasks/customTemplates'
 
 export const DEVICE_BACKUP_LABELS = {
   'nexus:pomodoro': '专注历史与实际分钟',
@@ -15,6 +16,7 @@ export const DEVICE_BACKUP_LABELS = {
   'nexus-achievements': '成就解锁日期',
   'nexus-konami': '彩蛋进度',
   'nexus:task-view': '任务视图偏好',
+  'nexus:task-templates': '本机个人任务模板',
 } as const
 export type DeviceBackupKey = keyof typeof DEVICE_BACKUP_LABELS
 export type DeviceBackup = Partial<Record<DeviceBackupKey, unknown>>
@@ -58,6 +60,7 @@ function config(raw: unknown) {
   return normalizeFocusConfig(value)
 }
 function validateValue(key: DeviceBackupKey, raw: unknown): unknown {
+  if (key === 'nexus:task-templates') return validateCustomTemplates(raw)
   if (rawText.has(key)) {
     const value = text(raw, DEVICE_BACKUP_LABELS[key])
     if (key === 'nexus:task-view' && !['list', 'kanban', 'calendar', 'agenda'].includes(value)) fail('任务视图')
