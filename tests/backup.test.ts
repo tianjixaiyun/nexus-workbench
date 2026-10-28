@@ -46,6 +46,15 @@ it('accepts legal legacy collections and normalizes missing task fields', async 
   expect((await localAdapter.tasks.list())[0]).toMatchObject({ tags: [], subtasks: [], recurrence: 'none', focusMinutes: 0 })
 })
 
+it('backs up and restores the agenda task view preference', async () => {
+  localStorage.setItem('nexus:task-view', 'agenda')
+  const exported = await createBackup()
+  expect(exported.deviceData?.['nexus:task-view']).toBe('agenda')
+  localStorage.setItem('nexus:task-view', 'list')
+  await importData(file(exported), { deviceKeys: ['nexus:task-view'] })
+  expect(localStorage.getItem('nexus:task-view')).toBe('agenda')
+})
+
 it('preserves task times in local storage and backup while accepting old tasks', async () => {
   await localAdapter.tasks.create({ title: '有时间', dueDate: '2026-12-31', dueTime: '09:30' })
   const exported = await createBackup()

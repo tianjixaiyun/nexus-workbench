@@ -60,7 +60,7 @@ function config(raw: unknown) {
 function validateValue(key: DeviceBackupKey, raw: unknown): unknown {
   if (rawText.has(key)) {
     const value = text(raw, DEVICE_BACKUP_LABELS[key])
-    if (key === 'nexus:task-view' && !['list', 'kanban', 'calendar'].includes(value)) fail('任务视图')
+    if (key === 'nexus:task-view' && !['list', 'kanban', 'calendar', 'agenda'].includes(value)) fail('任务视图')
     return value
   }
   if (key === 'nexus-konami') return typeof raw === 'boolean' ? raw : fail('彩蛋进度')
