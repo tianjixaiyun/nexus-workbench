@@ -416,10 +416,11 @@ export function DashboardView() {
   return (
     <div className="flex flex-col gap-5">
       {/* 问候 + 每日一句 + 时钟(Magic UI 式 border beam 光边) */}
-      <section className="nexus-stagger-in relative flex flex-wrap items-end justify-between gap-4 overflow-hidden rounded-3xl border border-line-1 bg-surface-1/60 px-6 py-5" style={{ animationDelay: '0ms' }}>
+      <section className="nexus-hero nexus-stagger-in relative flex flex-wrap items-end justify-between gap-4 overflow-hidden rounded-3xl border border-line-1 px-6 py-5" style={{ animationDelay: '0ms' }}>
         <BorderBeam duration={6.5} width={1.5} />
         <Aurora opacity={0.35} />
-        <div>
+        <div aria-hidden="true" className="nexus-orbit"><span className="nexus-orbit-ring nexus-orbit-ring-outer" /><span className="nexus-orbit-ring nexus-orbit-ring-inner" /><span className="nexus-orbit-core" /><span className="nexus-orbit-spark nexus-orbit-spark-a" /><span className="nexus-orbit-spark nexus-orbit-spark-b" /></div>
+        <div className="relative z-10">
           <p className="text-sm text-txt-muted">
             {new Date().toLocaleDateString('zh-CN', { year: 'numeric', month: 'long', day: 'numeric' })} 星期
             {'日一二三四五六'[new Date().getDay()]}
@@ -430,7 +431,7 @@ export function DashboardView() {
           </h2>
           <p className="mt-2 max-w-xl text-xs leading-relaxed text-txt-muted">{quote}</p>
         </div>
-        <LiveClock className="font-mono text-4xl font-bold tracking-tight tabular-nums neon-gradient-text" />
+        <LiveClock className="relative z-10 font-mono text-4xl font-bold tracking-tight tabular-nums neon-gradient-text" />
       </section>
 
       {/* 统计卡片 */}

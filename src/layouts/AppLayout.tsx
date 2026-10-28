@@ -211,7 +211,7 @@ export function AppLayout() {
       if (prefersReducedMotion()) navigate(to)
       else liquidNavigate(navigate, to, event)
     }}
-    className={({ isActive }) => cn('group relative flex min-h-9 shrink-0 items-center gap-2.5 rounded-lg px-3 py-2 text-[13px] transition-colors focus-visible:outline-2 focus-visible:outline-accent', isActive ? 'bg-accent-soft font-medium text-accent' : 'text-txt-secondary hover:bg-surface-2 hover:text-txt-primary')}
+    className={({ isActive }) => cn('group relative flex min-h-9 shrink-0 items-center gap-2.5 rounded-lg px-3 py-2 text-[13px] transition-colors focus-visible:outline-2 focus-visible:outline-accent', isActive ? 'nexus-nav-active bg-accent-soft font-medium text-accent' : 'text-txt-secondary hover:bg-surface-2 hover:text-txt-primary')}
   ><Icon size={17} className="shrink-0" aria-hidden="true" /><span className={compact ? 'sr-only' : 'min-w-0 flex-1 truncate'}>{label}</span>{!compact && shortcut && <kbd aria-hidden="true" className="font-mono text-[10px] text-txt-muted opacity-60">{shortcut}</kbd>}</NavLink>
   const sidebarContent = (compact: boolean, mobile = false) => <>
     <div className="flex items-center gap-3 px-4 pt-5 pb-4"><div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-accent-soft text-accent"><Zap size={18} /></div>{!compact && <div className="min-w-0 flex-1"><p className="text-base font-bold tracking-[.16em] text-txt-primary">NEXUS</p><p className="mt-0.5 text-[10px] text-txt-muted">个人工作空间</p></div>}{mobile && <button type="button" onClick={() => setMobileOpen(false)} aria-label="关闭导航菜单" className="cursor-pointer rounded-lg p-2 text-txt-secondary hover:bg-surface-2"><X size={18} /></button>}</div>

@@ -466,3 +466,49 @@ html.nexus-calm .nexus-beam, html.nexus-calm .nexus-ripple, html.nexus-calm .nex
 .workspace-title { margin-top: .5rem; font-size: clamp(1.65rem, 2.5vw, 2.1rem); line-height: 1.2; font-weight: 650; letter-spacing: -.03em; color: var(--color-txt-primary); }
 .workspace-description { margin-top: .65rem; color: var(--color-txt-secondary); font-size: .875rem; line-height: 1.75; }
 .workbench-shell { background: color-mix(in srgb, var(--color-ink-950) 94%, transparent); }
+
+/* 深海星轨：装饰层不捕获交互，文字始终处于上层。 */
+.nexus-hero {
+  isolation: isolate;
+  background: linear-gradient(115deg, rgba(11, 35, 48, .88), rgba(13, 20, 37, .92) 55%, rgba(31, 24, 58, .74));
+  box-shadow: inset 0 1px rgba(184, 242, 255, .1), 0 14px 42px rgba(0, 0, 0, .14);
+}
+html.light .nexus-hero {
+  background: linear-gradient(115deg, #e5f7fa, #f3f7ff 58%, #efe9fb);
+  box-shadow: inset 0 1px rgba(255, 255, 255, .9), 0 14px 36px rgba(27, 60, 100, .07);
+}
+.nexus-orbit {
+  position: absolute;
+  width: 260px;
+  height: 260px;
+  top: 50%;
+  left: 60%;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  opacity: .85;
+}
+.nexus-orbit-ring, .nexus-orbit-spark, .nexus-orbit-core { position: absolute; inset: 0; border-radius: 50%; }
+.nexus-orbit-ring { border: 1px solid rgba(103, 232, 249, .22); }
+.nexus-orbit-ring-outer { animation: nexus-orbit-spin 25s linear infinite; }
+.nexus-orbit-ring-inner { inset: 25px; border-color: rgba(196, 181, 253, .25); animation: nexus-orbit-spin 18s linear infinite reverse; }
+.nexus-orbit-ring::after {
+  content: ''; position: absolute; top: 13%; left: 13%; width: 6px; height: 6px;
+  border-radius: 50%; background: #a5f3fc; box-shadow: 0 0 9px 3px rgba(34, 211, 238, .6);
+}
+.nexus-orbit-ring-inner::after { top: 85%; left: 18%; width: 4px; height: 4px; background: #ddd6fe; box-shadow: 0 0 9px 3px rgba(167, 139, 250, .55); }
+.nexus-orbit-core { inset: 64px; background: radial-gradient(circle, rgba(103, 232, 249, .18), rgba(139, 92, 246, .06) 48%, transparent 72%); animation: nexus-orbit-breathe 7s ease-in-out infinite alternate; }
+.nexus-orbit-spark { inset: 18px; border: 1px dashed rgba(165, 243, 252, .13); animation: nexus-orbit-spin 45s linear infinite reverse; }
+.nexus-orbit-spark-b { inset: 49px; border-color: rgba(196, 181, 253, .14); animation-duration: 35s; animation-direction: normal; }
+@keyframes nexus-orbit-spin { to { transform: rotate(360deg); } }
+@keyframes nexus-orbit-breathe { to { transform: scale(1.2); opacity: .55; } }
+html.light .nexus-orbit { opacity: .58; }
+html.light .nexus-orbit-ring { border-color: rgba(8, 145, 178, .3); }
+html.light .nexus-orbit-spark { border-color: rgba(109, 40, 217, .2); }
+.nexus-nav-active { box-shadow: inset 0 0 0 1px rgba(34, 211, 238, .1), 0 0 18px rgba(34, 211, 238, .07); }
+.nexus-nav-active::before { content: ''; position: absolute; left: 0; top: 25%; bottom: 25%; width: 2px; border-radius: 4px; background: var(--color-accent); box-shadow: 0 0 9px var(--color-accent); }
+@media (hover: hover) and (prefers-reduced-motion: no-preference) {
+  html:not(.nexus-calm) .glass-card-hover:hover { box-shadow: inset 0 1px rgba(165, 243, 252, .12), 0 8px 28px rgba(34, 211, 238, .08); }
+}
+@media (max-width: 639px) { .nexus-orbit { width: 190px; height: 190px; left: 76%; opacity: .55; } }
+@media (prefers-reduced-motion: reduce) { .nexus-orbit-ring, .nexus-orbit-spark, .nexus-orbit-core { animation: none; } }
+html.nexus-calm .nexus-orbit-ring, html.nexus-calm .nexus-orbit-spark, html.nexus-calm .nexus-orbit-core { animation: none !important; }
