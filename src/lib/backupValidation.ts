@@ -3,7 +3,7 @@ import { GOAL_COLORS, HABIT_COLORS, NOTE_COLORS } from './data/types'
 import { isSafeUrl } from './utils'
 import { validateDeviceBackup, type DeviceBackup } from './deviceBackup'
 
-export const BACKUP_VERSION = 12
+export const BACKUP_VERSION = 13
 export const BACKUP_COLLECTIONS = ['tasks', 'notes', 'links', 'habits', 'milestones', 'dailies', 'goals', 'works', 'memos', 'expenses', 'contacts'] as const
 export type BackupCollection = typeof BACKUP_COLLECTIONS[number]
 export const BACKUP_LABELS: Record<BackupCollection, string> = { tasks: '任务', notes: '笔记', links: '链接', habits: '习惯', milestones: '倒数日', dailies: '每日复盘', goals: '目标', works: '作品', memos: '碎碎念', expenses: '记账', contacts: '人脉' }

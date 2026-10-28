@@ -1,6 +1,6 @@
 import { patchTaskFilters, readFilters, readTaskView } from '@/features/tasks/taskFilters'
 
-export type TaskViewMode = 'list' | 'kanban' | 'calendar' | 'agenda'
+export type TaskViewMode = 'list' | 'kanban' | 'calendar' | 'agenda' | 'week'
 export type SavedViewOwner = { mode: 'local' } | { mode: 'cloud'; url: string; userId: string }
 export interface SavedTaskView { id: string; name: string; query: string }
 export const SAVED_TASK_VIEWS_LIMIT = 12

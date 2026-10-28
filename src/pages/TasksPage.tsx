@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useSearchParams } from 'react-router'
-import { CalendarDays, CalendarRange, ChevronDown, CopyPlus, LayoutGrid, LayoutTemplate, List, Loader2, Plus, Search, SlidersHorizontal, X } from 'lucide-react'
+import { CalendarClock, CalendarDays, CalendarRange, ChevronDown, CopyPlus, LayoutGrid, LayoutTemplate, List, Loader2, Plus, Search, SlidersHorizontal, X } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Input, Select } from '@/components/ui/Input'
 import type { Task, TaskStatus } from '@/lib/data/types'
@@ -12,6 +12,7 @@ import { useAuthStore } from '@/stores/authStore'
 import { useTaskStore } from '@/stores/taskStore'
 import { CalendarView } from '@/features/tasks/CalendarView'
 import { AgendaView } from '@/features/tasks/AgendaView'
+import { WeekView } from '@/features/tasks/WeekView'
 import { KanbanBoard } from '@/features/tasks/KanbanBoard'
 import { TaskList } from '@/features/tasks/TaskList'
 import { TaskModal } from '@/features/tasks/TaskModal'
@@ -21,13 +22,14 @@ import { savedTaskViewsKey, TASK_VIEW_QUERY_KEYS, type SavedViewOwner } from '@/
 import { retainTaskEditor } from '@/features/tasks/taskDraft'
 import { DEFAULT_FILTERS, TASK_SCOPES, filterTasks, patchTaskFilters, readFilters, readTaskView, resolveTaskTarget, taskScopeCounts, type TaskFilters } from '@/features/tasks/taskFilters'
 
-type ViewMode = 'list' | 'kanban' | 'calendar' | 'agenda'
+type ViewMode = 'list' | 'kanban' | 'calendar' | 'agenda' | 'week'
 const VIEW_KEY = 'nexus:task-view'
 const VIEWS: { value: ViewMode; label: string; icon: typeof List }[] = [
   { value: 'list', label: '列表', icon: List },
   { value: 'kanban', label: '看板', icon: LayoutGrid },
   { value: 'calendar', label: '日历', icon: CalendarDays },
   { value: 'agenda', label: '日程', icon: CalendarRange },
+  { value: 'week', label: '周计划', icon: CalendarClock },
 ]
 interface Creation { status: TaskStatus; dueDate?: string; tag: string; ownerKey: string }
 
@@ -160,8 +162,8 @@ export default function TasksPage() {
   return (
     <div className="flex min-w-0 flex-col gap-3">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <div className="flex rounded-xl border border-line-2 bg-surface-1 p-1" role="group" aria-label="任务显示方式">
-          {VIEWS.map(({ value, label, icon: Icon }) => <button key={value} type="button" onClick={() => switchView(value)} aria-pressed={view === value} className={cn('flex cursor-pointer items-center gap-1 rounded-lg px-2 py-1.5 text-xs transition-all focus-visible:outline-2 focus-visible:outline-accent sm:gap-1.5 sm:px-3', view === value ? 'bg-surface-4 text-txt-primary' : 'text-txt-muted hover:text-txt-secondary')}><Icon size={14} />{label}</button>)}
+        <div className="flex max-w-full overflow-x-auto rounded-xl border border-line-2 bg-surface-1 p-1" role="group" aria-label="任务显示方式">
+          {VIEWS.map(({ value, label, icon: Icon }) => <button key={value} type="button" onClick={() => switchView(value)} aria-pressed={view === value} className={cn('flex shrink-0 cursor-pointer items-center gap-1 whitespace-nowrap rounded-lg px-2 py-1.5 text-xs transition-all focus-visible:outline-2 focus-visible:outline-accent sm:gap-1.5 sm:px-3', view === value ? 'bg-surface-4 text-txt-primary' : 'text-txt-muted hover:text-txt-secondary')}><Icon size={14} />{label}</button>)}
         </div>
         <Button variant="primary" size="sm" aria-label="新建任务" className="shrink-0" onClick={() => openCreate()}><Plus size={15} /><span className="sm:hidden">新建</span><span className="hidden sm:inline">新建任务</span></Button>
       </div>
@@ -195,6 +197,7 @@ export default function TasksPage() {
       {target.kind === 'missing' && <div role="alert" className="flex items-center justify-between gap-3 rounded-xl border border-warn/40 bg-warn/10 p-3 text-sm text-txt-secondary"><span>这条任务不存在或已移入回收站，请检查链接或到回收站查找。</span><Button size="sm" variant="ghost" onClick={closeTask}>关闭提示</Button></div>}
       {view === 'list' && <TaskList tasks={filtered} onEdit={openEdit} />}
       {view === 'agenda' && <AgendaView key={`agenda:${ownerKey ?? 'waiting'}`} tasks={filtered} today={today} onEdit={openEdit} onAddAt={date => openCreate('todo', date)} />}
+      {view === 'week' && <WeekView key={`week:${ownerKey ?? 'waiting'}`} tasks={filtered} today={today} onEdit={openEdit} onAddAt={date => openCreate('todo', date)} scoped={filters.scope !== 'all'} onShowAllDates={() => changeFilters({ scope: 'all' }, false)} />}
       {view === 'kanban' && <div className="h-[calc(100dvh-20rem)] min-h-[420px]"><KanbanBoard tasks={filtered} onEdit={openEdit} onAdd={status => openCreate(status)} /></div>}
       {view === 'calendar' && <div className="h-[calc(100dvh-20rem)] min-h-[480px] overflow-y-auto pr-1"><CalendarView tasks={filtered} onEdit={openEdit} onAddAt={date => openCreate('todo', date)} /></div>}
 
