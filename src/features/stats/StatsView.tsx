@@ -6,7 +6,7 @@ import { Chart, chartPalette, darkChartBase } from '@/components/ui/Chart'
 import { isoToLocalDateStr, toDateStr } from '@/lib/utils'
 import { exportData } from '@/lib/backup'
 import { dataAdapter } from '@/lib/data'
-import { notesToMarkdown, tasksToCsv } from '@/lib/portableExport'
+import { notesToMarkdown, tasksToCalendar, tasksToCsv } from '@/lib/portableExport'
 import { TaskCsvImportDialog } from '@/features/tasks/TaskCsvImportDialog'
 import { todayStr } from '@/lib/utils'
 import { requestBackupImport } from '@/lib/backupImport'
@@ -36,18 +36,18 @@ function BackupSection() {
     catch (error) { setNotice(error instanceof Error ? error.message : '导出失败，请重试') }
     finally { setBusy(false) }
   }
-  const exportPortable = async (kind: 'tasks' | 'notes') => {
+  const exportPortable = async (kind: 'tasks' | 'notes' | 'calendar') => {
     if (busy) return
     setBusy(true)
     setNotice('')
     setPortableText('')
     try {
-      const data = kind === 'tasks' ? tasksToCsv(await dataAdapter.tasks.list()) : notesToMarkdown(await dataAdapter.notes.list())
+      const data = kind === 'notes' ? notesToMarkdown(await dataAdapter.notes.list()) : kind === 'calendar' ? tasksToCalendar(await dataAdapter.tasks.list()) : tasksToCsv(await dataAdapter.tasks.list())
       setPortableText(data)
-      const url = URL.createObjectURL(new Blob([data], { type: kind === 'tasks' ? 'text/csv;charset=utf-8' : 'text/markdown;charset=utf-8' }))
+      const url = URL.createObjectURL(new Blob([data], { type: kind === 'tasks' ? 'text/csv;charset=utf-8' : kind === 'calendar' ? 'text/calendar;charset=utf-8' : 'text/markdown;charset=utf-8' }))
       const link = document.createElement('a')
       link.href = url
-      link.download = `nexus-${kind}-${todayStr()}.${kind === 'tasks' ? 'csv' : 'md'}`
+      link.download = `nexus-${kind}-${todayStr()}.${kind === 'tasks' ? 'csv' : kind === 'calendar' ? 'ics' : 'md'}`
       link.click()
       window.setTimeout(() => URL.revokeObjectURL(url), 1000)
       setNotice('已请求下载，请确认浏览器已保存文件；下载受阻时可复制内容。')
@@ -66,7 +66,7 @@ function BackupSection() {
       <Button variant="primary" disabled={busy} onClick={() => void handleExport()}>{busy ? <Loader2 size={14} className="animate-spin" /> : <FileDown size={14} />}{busy ? '正在导出…' : '导出备份'}</Button>
       <Button variant="outline" disabled={busy} onClick={requestBackupImport}><FileUp size={14} />恢复备份</Button>
     </div>
-    <div className="mt-4 border-t border-line-2 pt-4"><p className="mb-2 text-xs leading-5 text-txt-secondary">导出未删除的任务或笔记，方便在其他软件查看；这些文件不替代完整 JSON 备份。</p><div className="flex flex-wrap gap-2"><Button variant="outline" disabled={busy} onClick={() => void exportPortable('tasks')}><FileDown size={14} />任务 CSV</Button><Button variant="outline" disabled={busy} onClick={() => setCsvOpen(true)}><FileUp size={14} />导入任务 CSV</Button><Button variant="outline" disabled={busy} onClick={() => void exportPortable('notes')}><FileDown size={14} />笔记 Markdown</Button>{portableText && <Button variant="outline" disabled={busy} onClick={() => void copyPortable()}>复制导出内容</Button>}</div></div>
+    <div className="mt-4 border-t border-line-2 pt-4"><p className="mb-2 text-xs leading-5 text-txt-secondary">CSV 和 Markdown 导出未删除记录；日历文件包含有截止日期的未完成任务及描述，仅是一次性截止标记，不会自动同步或创建提醒。这些文件不替代完整 JSON 备份。</p><div className="flex flex-wrap gap-2"><Button variant="outline" disabled={busy} onClick={() => void exportPortable('tasks')}><FileDown size={14} />任务 CSV</Button><Button variant="outline" disabled={busy} onClick={() => setCsvOpen(true)}><FileUp size={14} />导入任务 CSV</Button><Button variant="outline" disabled={busy} onClick={() => void exportPortable('calendar')}><FileDown size={14} />日历 ICS</Button><Button variant="outline" disabled={busy} onClick={() => void exportPortable('notes')}><FileDown size={14} />笔记 Markdown</Button>{portableText && <Button variant="outline" disabled={busy} onClick={() => void copyPortable()}>复制导出内容</Button>}</div></div>
     {csvOpen && <TaskCsvImportDialog onClose={() => setCsvOpen(false)} />}
     {notice && <p role="status" className="mt-3 text-xs text-txt-secondary">{notice}</p>}
   </Card>
