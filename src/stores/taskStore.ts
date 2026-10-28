@@ -128,6 +128,7 @@ export const useTaskStore = create<TaskState>((set, get) => ({
           status: 'todo',
           priority: updated.priority,
           dueDate: nextDate,
+          ...(updated.dueTime ? { dueTime: updated.dueTime } : {}),
           recurrence: updated.recurrence,
           tags: [...updated.tags],
           subtasks: updated.subtasks.map((s) => ({ ...s, done: false })),

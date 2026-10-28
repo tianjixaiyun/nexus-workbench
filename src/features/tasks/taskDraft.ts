@@ -1,6 +1,6 @@
 import type { Task } from '@/lib/data/types'
 
-export type TaskDraft = Pick<Task, 'title' | 'description' | 'status' | 'priority' | 'recurrence' | 'tags' | 'subtasks'> & { dueDate: string }
+export type TaskDraft = Pick<Task, 'title' | 'description' | 'status' | 'priority' | 'recurrence' | 'tags' | 'subtasks'> & { dueDate: string; dueTime: string }
 type EditorCycle = { open: boolean; taskId: string | null }
 
 export function shouldInitializeTaskDraft(previous: EditorCycle, next: EditorCycle): boolean {
@@ -8,7 +8,7 @@ export function shouldInitializeTaskDraft(previous: EditorCycle, next: EditorCyc
 }
 
 export function createTaskDraft(task: Task): TaskDraft {
-  return { title: task.title, description: task.description, status: task.status, priority: task.priority, dueDate: task.dueDate ?? '', recurrence: task.recurrence ?? 'none', tags: [...(task.tags ?? [])], subtasks: (task.subtasks ?? []).map(item => ({ ...item })) }
+  return { title: task.title, description: task.description, status: task.status, priority: task.priority, dueDate: task.dueDate ?? '', dueTime: task.dueTime ?? '', recurrence: task.recurrence ?? 'none', tags: [...(task.tags ?? [])], subtasks: (task.subtasks ?? []).map(item => ({ ...item })) }
 }
 
 /** Keep an already-open editor available for copying its draft after remote deletion. */

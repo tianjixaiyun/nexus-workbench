@@ -3,7 +3,7 @@ import { GOAL_COLORS, HABIT_COLORS, NOTE_COLORS } from './data/types'
 import { isSafeUrl } from './utils'
 import { validateDeviceBackup, type DeviceBackup } from './deviceBackup'
 
-export const BACKUP_VERSION = 10
+export const BACKUP_VERSION = 11
 export const BACKUP_COLLECTIONS = ['tasks', 'notes', 'links', 'habits', 'milestones', 'dailies', 'goals', 'works', 'memos', 'expenses', 'contacts'] as const
 export type BackupCollection = typeof BACKUP_COLLECTIONS[number]
 export const BACKUP_LABELS: Record<BackupCollection, string> = { tasks: '任务', notes: '笔记', links: '链接', habits: '习惯', milestones: '倒数日', dailies: '每日复盘', goals: '目标', works: '作品', memos: '碎碎念', expenses: '记账', contacts: '人脉' }
@@ -70,6 +70,9 @@ function normalize(key: BackupCollection, row: Row): unknown {
   const createdAt = timestamp(row, 'createdAt') as string
   const base = { id, createdAt }
   if (key === 'tasks') {
+    const dueDate = date(row, 'dueDate', true)
+    const dueTime = nullableText(row, 'dueTime') || null
+    if (dueTime && (!dueDate || !/^(?:[01]\d|2[0-3]):[0-5]\d$/.test(dueTime))) fail('任务时间无效或缺少截止日期')
     const ids = new Set<string>()
     const subtasks = array(row, 'subtasks').map((value) => {
       const item = object(value, '子任务')
@@ -78,7 +81,7 @@ function normalize(key: BackupCollection, row: Row): unknown {
       ids.add(subId)
       return { id: subId, title: text(item, 'title'), done: bool(item, 'done') }
     })
-    return { ...base, title: text(row, 'title'), description: text(row, 'description', ''), status: choice(row, 'status', ['todo', 'doing', 'done'], 'todo'), priority: choice(row, 'priority', ['high', 'medium', 'low'], 'medium'), dueDate: date(row, 'dueDate', true), completedAt: timestamp(row, 'completedAt', EPOCH, true), deletedAt: timestamp(row, 'deletedAt', EPOCH, true), subtasks, tags: strings(row, 'tags'), recurrence: choice(row, 'recurrence', ['none', 'daily', 'weekly', 'monthly'], 'none'), focusMinutes: number(row, 'focusMinutes', 0, 0), sortOrder: number(row, 'sortOrder', 0), updatedAt: timestamp(row, 'updatedAt', createdAt) }
+    return { ...base, title: text(row, 'title'), description: text(row, 'description', ''), status: choice(row, 'status', ['todo', 'doing', 'done'], 'todo'), priority: choice(row, 'priority', ['high', 'medium', 'low'], 'medium'), dueDate, ...(dueTime ? { dueTime } : {}), completedAt: timestamp(row, 'completedAt', EPOCH, true), deletedAt: timestamp(row, 'deletedAt', EPOCH, true), subtasks, tags: strings(row, 'tags'), recurrence: choice(row, 'recurrence', ['none', 'daily', 'weekly', 'monthly'], 'none'), focusMinutes: number(row, 'focusMinutes', 0, 0), sortOrder: number(row, 'sortOrder', 0), updatedAt: timestamp(row, 'updatedAt', createdAt) }
   }
   if (key === 'notes') return { ...base, title: text(row, 'title'), content: text(row, 'content', ''), color: choice(row, 'color', NOTE_COLORS, 'cyan'), pinned: bool(row, 'pinned'), deletedAt: timestamp(row, 'deletedAt', EPOCH, true), updatedAt: timestamp(row, 'updatedAt', createdAt) }
   if (key === 'links') return { ...base, name: text(row, 'name'), url: url(row, 'url'), group: text(row, 'group', '未分组') }
@@ -116,7 +119,7 @@ export function validateBackup(raw: unknown): PreparedBackup {
   const warnings: string[] = []
   const result: Row = { app: 'nexus-workbench', version, exportedAt: typeof source.exportedAt === 'string' ? source.exportedAt : '' }
   for (const key of BACKUP_COLLECTIONS) {
-    if (version === BACKUP_VERSION && source[key] === undefined) fail('v10 备份缺少必要集合 ' + BACKUP_LABELS[key])
+    if (version >= 10 && source[key] === undefined) fail(`v${version} 备份缺少必要集合 ` + BACKUP_LABELS[key])
     if (source[key] !== undefined) presentCollections.push(key)
     else warnings.push(`旧备份没有${BACKUP_LABELS[key]}集合，默认不选择恢复；若勾选则本地清空该集合`)
     const values = source[key] === undefined ? [] : source[key]

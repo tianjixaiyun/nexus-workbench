@@ -100,6 +100,8 @@ alter table public.tasks add column if not exists tags text not null default '{}
 alter table public.tasks add column if not exists deleted_at timestamptz;
 alter table public.tasks add column if not exists recurrence text not null default 'none';
 alter table public.tasks add column if not exists focus_minutes int not null default 0;
+-- 任务的可选截止时间；不影响已有任务。
+alter table public.tasks add column if not exists due_time text check (due_time is null or due_time ~ '^([01][0-9]|2[0-3]):[0-5][0-9]$');
 
 -- ---------- 便签表 ----------
 create table if not exists public.notes (

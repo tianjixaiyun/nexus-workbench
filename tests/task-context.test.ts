@@ -45,6 +45,11 @@ describe('任务行动视图', () => {
     expect(filterTasks(source, { ...DEFAULT_FILTERS, sort: 'title' }, '2026-12-31')[0].id).toBe('high')
   })
 
+  it('按日期排序时，同一天有具体时间的任务按时间排列，无时间排后面', () => {
+    const source = [task('全天', { dueDate: '2026-12-31' }), task('晚上', { dueDate: '2026-12-31', dueTime: '20:00' }), task('早上', { dueDate: '2026-12-31', dueTime: '09:30' })]
+    expect(filterTasks(source, { ...DEFAULT_FILTERS, sort: 'due' }, '2026-12-31').map(item => item.id)).toEqual(['早上', '晚上', '全天'])
+  })
+
   it('旧记录缺少标签时仍可搜索，未知URL枚举回到安全默认', () => {
     expect(filterTasks([task('old', { tags: undefined as unknown as string[] })], { ...DEFAULT_FILTERS, search: 'old' }, '2026-12-31')).toHaveLength(1)
     expect(readFilters(new URLSearchParams('scope=evil&priority=urgent&status=oops&sort=bogus'))).toEqual(DEFAULT_FILTERS)
@@ -145,7 +150,7 @@ describe('看板移动与真实任务状态', () => {
   })
 
   it('拖到已完成复用完成语义，保留完成时间并且仅生成一个下次重复任务', async () => {
-    load([task('repeat', { recurrence: 'daily', dueDate: '2026-12-31', tags: ['目标'], subtasks: [{ id: 'step', title: '一步', done: true }] })])
+    load([task('repeat', { recurrence: 'daily', dueDate: '2026-12-31', dueTime: '09:30', tags: ['目标'], subtasks: [{ id: 'step', title: '一步', done: true }] })])
     await useTaskStore.getState().move('repeat', 'done', 0)
     await useTaskStore.getState().move('repeat', 'done', 0)
     const saved = useTaskStore.getState().tasks
@@ -153,7 +158,7 @@ describe('看板移动与真实任务状态', () => {
     expect(saved.find(item => item.id === 'repeat')?.completedAt).toMatch(/^\d{4}-/)
     expect(records.get('repeat')?.completedAt).toBe(saved.find(item => item.id === 'repeat')?.completedAt)
     expect(saved.filter(item => item.dueDate === '2027-01-01')).toHaveLength(1)
-    expect(saved.find(item => item.dueDate === '2027-01-01')).toMatchObject({ status: 'todo', tags: ['目标'], subtasks: [{ id: 'step', title: '一步', done: false }] })
+    expect(saved.find(item => item.dueDate === '2027-01-01')).toMatchObject({ status: 'todo', dueTime: '09:30', tags: ['目标'], subtasks: [{ id: 'step', title: '一步', done: false }] })
   })
 
   it('第一次持久化失败时不把未保存的移动显示成成功', async () => {

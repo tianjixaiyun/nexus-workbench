@@ -35,6 +35,7 @@ const emptyForm: FormState = {
   status: 'todo',
   priority: 'medium',
   dueDate: '',
+  dueTime: '',
   recurrence: 'none',
   tags: [],
   subtasks: [],
@@ -118,6 +119,7 @@ export function TaskModal({ open, onClose, task, defaultStatus = 'todo', default
       status: form.status,
       priority: form.priority,
       dueDate: form.dueDate || null,
+      ...(form.dueTime || task?.dueTime ? { dueTime: form.dueDate ? form.dueTime || null : null } : {}),
       recurrence: form.recurrence,
       tags: form.tags,
       subtasks: form.subtasks,
@@ -131,7 +133,7 @@ export function TaskModal({ open, onClose, task, defaultStatus = 'todo', default
       onClose()
       if (goFocus && task) navigate(focusContextHref(task.id))
     } catch {
-      setError('保存失败，填写内容仍在这里，请重试。')
+      setError(form.dueTime ? '保存失败，填写内容仍在这里。请检查连接；已有云端项目需先在设置中执行任务时间更新 SQL。' : '保存失败，填写内容仍在这里，请重试。')
     } finally { setSaving(false) }
   }
 
@@ -203,7 +205,7 @@ export function TaskModal({ open, onClose, task, defaultStatus = 'todo', default
           </div>
           <div>
             <label className="mb-1.5 block text-xs text-txt-secondary">截止日期</label>
-            <Input type="date" value={form.dueDate} onChange={(e) => patch({ dueDate: e.target.value })} />
+            <Input type="date" aria-label="截止日期" value={form.dueDate} onChange={(e) => patch({ dueDate: e.target.value, ...(!e.target.value ? { dueTime: '' } : {}) })} />
           </div>
           <div>
             <label className="mb-1.5 block text-xs text-txt-secondary">重复</label>
@@ -219,6 +221,8 @@ export function TaskModal({ open, onClose, task, defaultStatus = 'todo', default
             </Select>
           </div>
         </div>
+
+        <div><label className="mb-1.5 block text-xs text-txt-secondary" htmlFor="task-due-time">截止时间（可选）</label><Input id="task-due-time" type="time" value={form.dueTime} disabled={!form.dueDate} onChange={e => patch({ dueTime: e.target.value })} /><p className="mt-1 text-xs text-txt-muted">按当前设备的本地时间计算；工作台打开时提示最近 30 分钟到期的任务，关闭后不会推送。</p></div>
 
         {/* 标签 */}
         <div>

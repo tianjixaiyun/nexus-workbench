@@ -29,6 +29,7 @@ import { QuickCapture, QuickCaptureFab } from '@/components/QuickCapture'
 import { ShortcutsHelp } from '@/components/ShortcutsHelp'
 import { Toaster } from '@/components/Toaster'
 import { CalmModeToggle } from '@/components/CalmModeToggle'
+import { TaskReminderBanner } from '@/features/tasks/TaskReminderBanner'
 import { prefersReducedMotion } from '@/lib/useReducedMotion'
 
 import { loadNavigationPreferences, saveNavigationPreferences, type NavigationPreferences } from '@/lib/navigationPreferences'
@@ -328,6 +329,8 @@ export function AppLayout() {
             </div>
           )
         })()}
+
+        {user && <TaskReminderBanner key={user.id} tasks={allTasks} />}
 
         {/* 本地模式数据备份提醒:超 7 天未导出且库内有数据时,会话内提示一次 */}
         <BackupReminder />

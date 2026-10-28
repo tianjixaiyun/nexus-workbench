@@ -15,6 +15,14 @@ it('cloud creation supplies a fresh UUID even for tables without a server defaul
   expect(mock.inserted?.user_id).toBe('account-a')
 })
 
+it('sends task time when present, and omits it for old schemas when absent', async () => {
+  mock.owner = 'account-a'
+  await cloudAdapter.tasks.create({ title: '预约', dueDate: '2026-12-31', dueTime: '09:30' })
+  expect(mock.inserted?.due_time).toBe('09:30')
+  await cloudAdapter.tasks.create({ title: '旧字段任务' })
+  expect(JSON.parse(JSON.stringify(mock.inserted))).not.toHaveProperty('due_time')
+})
+
 it('does not send a record when getSession returns a different account than the confirmed import owner', async () => {
   const { BACKUP_IMPORT_USER } = await import('../src/lib/backupImport')
   mock.owner = 'account-b'

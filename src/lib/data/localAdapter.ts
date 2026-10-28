@@ -67,6 +67,7 @@ const LOCAL_USER_ID = 'local'
 function normalizeTask(t: Task): Task {
   return {
     ...t,
+    dueTime: t.dueTime ?? null,
     completedAt: t.completedAt ?? null,
     subtasks: t.subtasks ?? [],
     tags: t.tags ?? [],
@@ -95,6 +96,7 @@ const tasks: EntityStore<Task, NewTask> = {
       status: input.status ?? 'todo',
       priority: input.priority ?? 'medium',
       dueDate: input.dueDate ?? null,
+      dueTime: input.dueTime ?? null,
       completedAt: input.completedAt ?? null,
       subtasks: input.subtasks ?? [],
       tags: input.tags ?? [],

@@ -54,6 +54,7 @@ function TaskChip({ task, onEdit, dimmed }: {
       <span className={cn('absolute top-0 left-0 h-full w-[2.5px]', PRIORITY_STRIPE[task.priority])} />
       <span className={cn('block truncate', done && 'text-txt-muted line-through')}>
         {task.recurrence !== 'none' && <span className="mr-0.5">🔁</span>}
+        {task.dueTime && <span className="mr-1 font-mono">{task.dueTime}</span>}
         {task.title}
       </span>
     </button>

@@ -46,6 +46,22 @@ it('accepts legal legacy collections and normalizes missing task fields', async 
   expect((await localAdapter.tasks.list())[0]).toMatchObject({ tags: [], subtasks: [], recurrence: 'none', focusMinutes: 0 })
 })
 
+it('preserves task times in local storage and backup while accepting old tasks', async () => {
+  await localAdapter.tasks.create({ title: '有时间', dueDate: '2026-12-31', dueTime: '09:30' })
+  const exported = await createBackup()
+  expect(exported.version).toBe(11)
+  expect(exported.tasks[0].dueTime).toBe('09:30')
+  await importData(file(exported))
+  expect((await localAdapter.tasks.list())[0].dueTime).toBe('09:30')
+})
+
+it('rejects invalid or dateless task times before changing data', async () => {
+  await localAdapter.tasks.create({ title: '保留我' })
+  await expect(importData(file(backup({ tasks: [{ ...task, dueDate: '2026-12-31', dueTime: '25:00' }] })))).rejects.toThrow()
+  await expect(importData(file(backup({ tasks: [{ ...task, dueTime: '09:30' }] })))).rejects.toThrow()
+  expect((await localAdapter.tasks.list())[0].title).toBe('保留我')
+})
+
 it('rolls all eleven tables back if one table write fails', async () => {
   await localAdapter.tasks.create({ title: '原任务' })
   await localAdapter.notes.create({ title: '原笔记', content: '正文' })
@@ -145,7 +161,7 @@ it('exports and restores all eleven real collections plus selected focus history
   localStorage.setItem('nexus:pomodoro', JSON.stringify(history))
   localStorage.setItem('nexus:journal', JSON.stringify(logs))
   const exported = await createBackup()
-  expect(exported.version).toBe(10)
+  expect(exported.version).toBe(11)
   await Promise.all(db.tables.map((table) => table.clear()))
   localStorage.removeItem('nexus:pomodoro')
   localStorage.removeItem('nexus:journal')

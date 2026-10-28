@@ -20,6 +20,7 @@ const SECTIONS = [{ id: 'cloud', label: '云端连接', icon: Cloud }, { id: 'ap
 type Section = typeof SECTIONS[number]['id']
 type TableCheck = { table: string; label: string; ok: boolean; error?: string }
 const STATUS_LABELS = { local: '本地存储', connecting: '实时连接中', live: '实时已连接', offline: '当前离线', error: '连接需检查' } as const
+const TASK_TIME_UPGRADE_SQL = "alter table public.tasks add column if not exists due_time text check (due_time is null or due_time ~ '^([01][0-9]|2[0-3]):[0-5][0-9]$');"
 const reloadAt = (path: string) => window.location.assign(`${import.meta.env.BASE_URL.replace(/\/$/, '')}${path}`)
 
 function SectionHeading({ eyebrow, title, description }: { eyebrow: string; title: string; description: string }) {
@@ -131,6 +132,10 @@ export default function SettingsPage() {
     try { await navigator.clipboard.writeText(schemaSql); toast.success('建表 SQL 已复制', '到自己的 Supabase SQL Editor 粘贴并执行') }
     catch { toast.error('剪贴板不可用', '请使用“下载 SQL”，再复制文件内容到 SQL Editor') }
   }
+  const copyTaskTimeUpgrade = async () => {
+    try { await navigator.clipboard.writeText(TASK_TIME_UPGRADE_SQL); toast.success('任务时间更新 SQL 已复制', '在自己的 Supabase SQL Editor 执行；不需要重复初始化其他表') }
+    catch { toast.error('复制失败', '可以使用“复制建表 SQL”或“下载 SQL”更新已有表') }
+  }
   const downloadSchema = () => {
     const objectUrl = URL.createObjectURL(new Blob([schemaSql], { type: 'text/plain;charset=utf-8' }))
     const anchor = document.createElement('a')
@@ -168,7 +173,7 @@ export default function SettingsPage() {
           <SectionHeading eyebrow="CONNECT IN THREE STEPS" title="连接你自己的云端" description="无需重新部署网站。先创建项目、初始化数据表，再填入公开连接信息。" />
           <ol className="mt-6 flex flex-col gap-6">
             <li className="flex gap-3"><span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-accent-soft font-mono text-xs text-accent">01</span><div className="min-w-0"><h4 className="text-sm font-medium text-txt-primary">创建 Supabase 项目</h4><p className="mt-1 text-xs leading-5 text-txt-secondary">选择自己的组织与区域。项目费用和额度以控制台显示为准。</p><a href="https://supabase.com/dashboard" target="_blank" rel="noreferrer" className="mt-2 inline-flex items-center gap-1.5 text-xs text-accent hover:underline">打开 Supabase 控制台<ExternalLink size={12} /></a></div></li>
-            <li className="flex gap-3"><span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-accent-soft font-mono text-xs text-accent">02</span><div className="min-w-0 flex-1"><h4 className="text-sm font-medium text-txt-primary">初始化 NEXUS 数据表</h4><p className="mt-1 text-xs leading-5 text-txt-secondary">复制或下载建表 SQL，在自己的 SQL Editor 执行。脚本包含账号隔离规则和实时订阅配置；已有项目请先保留备份。</p><div className="mt-3 flex flex-wrap gap-2"><Button size="sm" variant="outline" onClick={() => void copySchema()}><Copy size={13} />复制建表 SQL</Button><Button size="sm" variant="outline" onClick={downloadSchema}><Download size={13} />下载 SQL</Button><a href={sqlEditorUrl} target="_blank" rel="noreferrer" className="inline-flex h-8 items-center gap-1 text-xs text-accent hover:underline">SQL Editor<ExternalLink size={11} /></a></div></div></li>
+            <li className="flex gap-3"><span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-accent-soft font-mono text-xs text-accent">02</span><div className="min-w-0 flex-1"><h4 className="text-sm font-medium text-txt-primary">初始化 NEXUS 数据表</h4><p className="mt-1 text-xs leading-5 text-txt-secondary">新项目运行建表 SQL。已有项目使用任务截止时间前，请先备份并执行“任务时间更新 SQL”；其他表不需要重复初始化。</p><div className="mt-3 flex flex-wrap gap-2"><Button size="sm" variant="outline" onClick={() => void copySchema()}><Copy size={13} />复制建表 SQL</Button><Button size="sm" variant="outline" onClick={() => void copyTaskTimeUpgrade()}><Copy size={13} />复制任务时间更新 SQL</Button><Button size="sm" variant="outline" onClick={downloadSchema}><Download size={13} />下载 SQL</Button><a href={sqlEditorUrl} target="_blank" rel="noreferrer" className="inline-flex h-8 items-center gap-1 text-xs text-accent hover:underline">SQL Editor<ExternalLink size={11} /></a></div></div></li>
             <li className="flex gap-3"><span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-accent-soft font-mono text-xs text-accent">03</span><div className="min-w-0 flex-1"><h4 className="text-sm font-medium text-txt-primary">验证连接并启用</h4><p className="mt-1 text-xs leading-5 text-txt-secondary">在项目 Connect / API Keys 中找到 Project URL 和 Publishable key。不要填写 Secret 或 service_role。</p>
               <form onSubmit={event => { event.preventDefault(); void inspectConnection() }} className="mt-4 flex flex-col gap-4">
                 <div><label htmlFor="cloud-project-url" className="mb-1.5 block text-xs font-medium text-txt-secondary">Project URL</label><Input id="cloud-project-url" type="url" autoComplete="off" spellCheck={false} placeholder="https://your-project.supabase.co" value={url} disabled={switching} onChange={event => { invalidate(); setUrl(event.target.value) }} /></div>

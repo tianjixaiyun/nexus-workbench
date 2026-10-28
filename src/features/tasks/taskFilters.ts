@@ -76,7 +76,8 @@ export function filterTasks(tasks: Task[], filters: TaskFilters, today: string):
       if (priority) return priority
     }
     const date = (a.dueDate ?? '9999').localeCompare(b.dueDate ?? '9999')
-    return date || b.createdAt.localeCompare(a.createdAt)
+    const time = a.dueDate && b.dueDate && !date ? (a.dueTime ?? '99:99').localeCompare(b.dueTime ?? '99:99') : 0
+    return date || time || b.createdAt.localeCompare(a.createdAt)
   })
 }
 

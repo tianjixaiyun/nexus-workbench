@@ -118,7 +118,7 @@ export function TaskList({ tasks, onEdit }: TaskListProps) {
                   <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
                     <Badge tone={PRIORITY_META[task.priority].tone}>{PRIORITY_META[task.priority].label}优先级</Badge>
                     <Badge tone={STATUS_META[task.status].tone}>{STATUS_META[task.status].label}</Badge>
-                    {task.dueDate && <Badge tone={overdue ? 'rose' : 'slate'}><Calendar size={10} />{overdue ? '已逾期 · ' : ''}{formatDate(task.dueDate)}</Badge>}
+                    {task.dueDate && <Badge tone={overdue ? 'rose' : 'slate'}><Calendar size={10} />{overdue ? '已逾期 · ' : ''}{formatDate(task.dueDate)}{task.dueTime ? ` ${task.dueTime}` : ''}</Badge>}
                   </div>
                   {task.description && !done && (
                     <p className="mt-0.5 truncate text-xs text-txt-muted">{task.description}</p>

@@ -36,6 +36,8 @@ export interface Task {
   priority: TaskPriority
   /** YYYY-MM-DD,可为空 */
   dueDate: string | null
+  /** 本地时间 HH:mm；旧记录没有时间。 */
+  dueTime?: string | null
   /** 标记完成的时间(ISO),未完成为 null */
   completedAt: string | null
   /** 子任务清单 */
@@ -61,6 +63,7 @@ export type NewTask = Pick<Task, 'title'> &
       | 'status'
       | 'priority'
       | 'dueDate'
+      | 'dueTime'
       | 'sortOrder'
       | 'completedAt'
       | 'subtasks'

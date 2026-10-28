@@ -24,7 +24,7 @@ export function RescheduleDialog({ targets, onClose, onSaved }: { targets: Task[
       const baseline = remaining.find(task => task.id === id)
       const current = useTaskStore.getState().tasks.find(task => task.id === id)
       if (!baseline || !current || current.deletedAt || current.updatedAt !== baseline.updatedAt) throw new Error('任务已变化')
-      await useTaskStore.getState().update(id, { dueDate: clearDate ? null : date })
+      await useTaskStore.getState().update(id, { dueDate: clearDate ? null : date, ...(clearDate && current.dueTime ? { dueTime: null } : {}) })
     })
     onSaved(result.completed)
     lock.current = false
@@ -35,7 +35,7 @@ export function RescheduleDialog({ targets, onClose, onSaved }: { targets: Task[
   }
   return <Modal open onClose={() => { if (!lock.current) onClose() }} title={targets.length === 1 ? '重新安排任务' : '批量重新安排'}>
     <div className="space-y-4">
-      <p className="text-sm text-txt-secondary">{targets.length === 1 ? `任务：${targets[0].title}` : `将修改 ${remaining.length} 项任务的截止日期。`} 其他内容和重复规则保持不变。</p>
+      <p className="text-sm text-txt-secondary">{targets.length === 1 ? `任务：${targets[0].title}` : `将修改 ${remaining.length} 项任务的截止日期。`} 改期保留截止时间；清除日期也会清除时间。</p>
       <div className="flex flex-wrap gap-2" role="group" aria-label="快捷选择日期">
         {[['今天', today], ['明天', shiftDay(today, 1)], ['下周一', nextMonday(today)]].map(([label, value]) => <button key={label} type="button" disabled={saving} aria-pressed={!clearDate && date === value} onClick={() => { setDate(value); setClearDate(false) }} className="min-h-10 rounded-lg border border-line-2 px-3 text-sm text-txt-primary hover:border-accent aria-pressed:border-accent aria-pressed:bg-accent-soft disabled:opacity-50">{label} · {formatDate(value)}</button>)}
         <button type="button" disabled={saving} aria-pressed={clearDate} onClick={() => { setDate(''); setClearDate(true) }} className="min-h-10 rounded-lg border border-line-2 px-3 text-sm text-txt-primary hover:border-accent aria-pressed:border-accent aria-pressed:bg-accent-soft disabled:opacity-50">清除日期</button>
