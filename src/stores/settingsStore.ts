@@ -78,8 +78,17 @@ function persist(patch: Partial<Stored>): boolean {
 
 /** 把主题落到 <html> 的 class 上(CSS 变量随 class 切换) */
 export function applyTheme(theme: Theme) {
-  document.documentElement.classList.toggle('light', theme === 'light')
+  const light = theme === 'light'
+  document.documentElement.classList.toggle('light', light)
   document.documentElement.style.colorScheme = theme
+  // 与 index.html 首帧脚本保持同一配色:运行时切换也要更新
+  // html 内联背景(避免亮色下 overscroll 露出深色底)和浏览器地址栏主题色
+  const bg = light ? '#eef2f7' : '#05080f'
+  document.documentElement.style.background = bg
+  // 极简 DOM 桩(测试环境)可能没有 querySelector;真实浏览器始终有
+  if (typeof document.querySelector === 'function') {
+    document.querySelector('meta[name="theme-color"]')?.setAttribute('content', bg)
+  }
 }
 
 export function applyCalmMode(enabled: boolean) {

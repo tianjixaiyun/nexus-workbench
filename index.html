@@ -19,6 +19,7 @@
         if (light) document.documentElement.classList.add('light')
         document.documentElement.style.background = bg
         document.documentElement.style.colorScheme = light ? 'light' : 'dark'
+        document.querySelector('meta[name="theme-color"]')?.setAttribute('content', bg)
       })()
     </script>
     <script>

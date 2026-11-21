@@ -17,7 +17,7 @@ export function RotatingBadge({ text = '向下潜 · DIVE DEEPER · 向下潜 ·
   return (
     <button
       onClick={onClick}
-      className={cn('group relative cursor-pointer select-none', className)}
+      className={cn('group pointer-events-auto relative cursor-pointer select-none', className)}
       style={{ width: size, height: size }}
       aria-label={text}
       title="继续下潜"

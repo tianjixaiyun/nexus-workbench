@@ -924,9 +924,9 @@ export default function OceanLanding() {
       </div>
 
       {/* 下潜分幕(整层随滚动速度轻微歪斜;分区进入视口时 CSS 原生 scroll-driven reveal) */}
-      <div ref={skewRef} className="ocean-acts relative z-10 will-change-transform" style={{ marginTop: 'calc(-100dvh)' }}>
+      <div ref={skewRef} className="ocean-acts pointer-events-none relative z-10 will-change-transform" style={{ marginTop: 'calc(-100dvh)' }}>
         {/* 第一幕:海面之上 */}
-        <section className="flex h-dvh items-center justify-center px-8 text-center">
+        <section className="pointer-events-none flex h-dvh items-center justify-center px-8 text-center">
           <div className="pointer-events-none max-w-3xl">
             <p className="mb-6 inline-block rounded-full border border-white/40 bg-white/10 px-4 py-1.5 text-[11px] tracking-[0.35em] text-white/90 backdrop-blur">
               NEXUS · 个人数字海洋
@@ -953,7 +953,7 @@ export default function OceanLanding() {
         </section>
 
         {/* 第 1.5 幕:三步玩转 */}
-        <section className="flex h-dvh flex-col items-center justify-center gap-10 px-8 text-center md:px-16">
+        <section className="pointer-events-none flex h-dvh flex-col items-center justify-center gap-10 px-8 text-center md:px-16">
           <div className="pointer-events-none max-w-3xl">
             <p className="mb-4 text-[11px] tracking-[0.4em] text-cyan-100/80">-2M · 起步</p>
             <h2 className="text-4xl leading-tight font-bold tracking-wide text-white drop-shadow md:text-6xl">
@@ -984,7 +984,7 @@ export default function OceanLanding() {
         </section>
 
         {/* 第二幕:透光层 */}
-        <section className="flex h-dvh items-center justify-start px-10 md:px-28">
+        <section className="pointer-events-none flex h-dvh items-center justify-start px-10 md:px-28">
           <div className="pointer-events-none max-w-xl">
             <p className="mb-4 text-[11px] tracking-[0.4em] text-cyan-100/80">-6M · 透光层</p>
             <h2 className="text-4xl leading-tight font-bold tracking-wide text-white drop-shadow md:text-6xl">
@@ -1003,7 +1003,7 @@ export default function OceanLanding() {
         </section>
 
         {/* 第三幕:暮光层 */}
-        <section className="flex h-dvh items-center justify-end px-10 text-left md:px-28">
+        <section className="pointer-events-none flex h-dvh items-center justify-end px-10 text-left md:px-28">
           <div className="pointer-events-none max-w-xl">
             <p className="mb-4 text-[11px] tracking-[0.4em] text-cyan-100/80">-18M · 暮光层</p>
             <h2 className="text-4xl leading-tight font-bold tracking-wide text-white drop-shadow md:text-6xl">
@@ -1020,7 +1020,7 @@ export default function OceanLanding() {
         </section>
 
         {/* 第四幕:鲸 */}
-        <section className="flex h-dvh items-center justify-start px-10 md:px-28">
+        <section className="pointer-events-none flex h-dvh items-center justify-start px-10 md:px-28">
           <div className="pointer-events-none max-w-xl">
             <p className="mb-4 text-[11px] tracking-[0.4em] text-cyan-100/80">-27M · 深水层</p>
             <h2 className="text-4xl leading-tight font-bold tracking-wide text-white drop-shadow md:text-6xl">
@@ -1037,7 +1037,7 @@ export default function OceanLanding() {
         </section>
 
         {/* 第 4.5 幕:数字年报 */}
-        <section className="flex h-dvh flex-col items-center justify-center gap-12 px-8 text-center">
+        <section className="pointer-events-none flex h-dvh flex-col items-center justify-center gap-12 px-8 text-center">
           <div className="pointer-events-none max-w-2xl">
             <p className="mb-4 text-[11px] tracking-[0.4em] text-cyan-100/80">-36M · 年轮</p>
             <h2 className="text-4xl leading-tight font-bold tracking-wide text-white drop-shadow md:text-6xl">
@@ -1068,7 +1068,7 @@ export default function OceanLanding() {
         </section>
 
         {/* 第五幕:深海尽头 */}
-        <section className="flex h-dvh flex-col items-center justify-center px-8 text-center">
+        <section className="pointer-events-none flex h-dvh flex-col items-center justify-center px-8 text-center">
           <div className="pointer-events-none max-w-2xl">
             <p className="mb-4 text-[11px] tracking-[0.4em] text-cyan-100/80">-40M · 深海尽头</p>
             <h2 className="text-4xl leading-tight font-bold tracking-wide text-white drop-shadow md:text-6xl">
