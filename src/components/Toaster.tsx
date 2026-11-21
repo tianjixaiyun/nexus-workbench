@@ -29,7 +29,8 @@ function ToastCard({ toast }: { toast: ToastItem }) {
   }
 
   useEffect(() => {
-    timer.current = window.setTimeout(close, AUTO_DISMISS_MS)
+    // 带操作按钮的通知(如撤销)停留更久,给手指反应时间
+    timer.current = window.setTimeout(close, toast.action ? 8000 : AUTO_DISMISS_MS)
     return () => clearTimeout(timer.current)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
@@ -46,6 +47,18 @@ function ToastCard({ toast }: { toast: ToastItem }) {
       <div className="min-w-0 flex-1">
         <p className="text-sm font-medium text-txt-primary">{toast.title}</p>
         {toast.desc && <p className="mt-0.5 text-xs leading-relaxed text-txt-secondary">{toast.desc}</p>}
+        {toast.action && (
+          <button
+            onClick={(e) => {
+              e.stopPropagation()
+              toast.action?.run()
+              close()
+            }}
+            className="mt-2 shrink-0 cursor-pointer rounded-lg border border-accent/40 px-2.5 py-1 text-xs font-medium text-accent transition-colors hover:bg-accent-soft focus-visible:outline-2 focus-visible:outline-accent"
+          >
+            {toast.action.label}
+          </button>
+        )}
       </div>
       <button
         onClick={(e) => {

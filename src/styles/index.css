@@ -512,3 +512,9 @@ html.light .nexus-orbit-spark { border-color: rgba(109, 40, 217, .2); }
 @media (max-width: 639px) { .nexus-orbit { width: 190px; height: 190px; left: 76%; opacity: .55; } }
 @media (prefers-reduced-motion: reduce) { .nexus-orbit-ring, .nexus-orbit-spark, .nexus-orbit-core { animation: none; } }
 html.nexus-calm .nexus-orbit-ring, html.nexus-calm .nexus-orbit-spark, html.nexus-calm .nexus-orbit-core { animation: none !important; }
+
+/* 移动端输入体验:iOS 在聚焦 <16px 的输入框时会自动放大页面,
+   触屏设备统一提升输入字号到 16px,代价仅是触屏上字号略大 */
+@media (pointer: coarse) {
+  input, textarea, select { font-size: 16px !important; }
+}

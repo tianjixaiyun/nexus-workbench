@@ -18,6 +18,7 @@ import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import type { Task, TaskStatus } from '@/lib/data/types'
 import { cn, formatDate, isOverdue } from '@/lib/utils'
 import { activeTasks, useTaskStore } from '@/stores/taskStore'
+import { toast } from '@/stores/toastStore'
 import { ALL_STATUSES, PRIORITY_META, PRIORITY_STRIPE, STATUS_META } from './taskMeta'
 import { kanbanTargetIndex } from './taskFilters'
 
@@ -194,6 +195,7 @@ export function KanbanBoard({ onEdit, onAdd, tasks: displayedTasks }: KanbanProp
   const allTasks = useTaskStore((s) => s.tasks)
   const move = useTaskStore((s) => s.move)
   const softDelete = useTaskStore((s) => s.softDelete)
+  const restore = useTaskStore((s) => s.restore)
   const tasks = useMemo(() => displayedTasks ?? activeTasks(allTasks), [displayedTasks, allTasks])
   const [draggingId, setDraggingId] = useState<string | null>(null)
   const [deleteId, setDeleteId] = useState<string | null>(null)
@@ -273,7 +275,15 @@ export function KanbanBoard({ onEdit, onAdd, tasks: displayedTasks }: KanbanProp
         confirmText="移入回收站"
         onCancel={() => setDeleteId(null)}
         onConfirm={() => {
-          if (deleteId) void softDelete(deleteId)
+          if (!deleteId) return
+          const id = deleteId
+          const target = tasks.find(task => task.id === id)
+          void softDelete(id)
+            .then(() => toast.success('已移入回收站', target?.title ?? '任务', {
+              label: '撤销',
+              run: () => void restore(id),
+            }))
+            .catch(() => { /* 失败由全局同步状态提示;本地未变无需处理 */ })
           setDeleteId(null)
         }}
       />

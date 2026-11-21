@@ -29,6 +29,7 @@ import { QuickCapture, QuickCaptureFab } from '@/components/QuickCapture'
 import { ShortcutsHelp } from '@/components/ShortcutsHelp'
 import { Toaster } from '@/components/Toaster'
 import { CalmModeToggle } from '@/components/CalmModeToggle'
+import { PwaInstallButton } from '@/components/PwaInstallButton'
 import { TaskReminderBanner } from '@/features/tasks/TaskReminderBanner'
 import { prefersReducedMotion } from '@/lib/useReducedMotion'
 
@@ -262,6 +263,7 @@ export function AppLayout() {
           <div className="flex shrink-0 items-center gap-2 sm:gap-3">
             {user && <button type="button" onClick={() => { requestAction('new-task'); navigate('/tasks') }} className="hidden h-9 cursor-pointer items-center gap-1.5 rounded-lg border border-line-2 px-3 text-xs text-txt-secondary hover:border-accent lg:inline-flex"><Plus size={14} />新建任务</button>}
             <CalmModeToggle />
+            <PwaInstallButton />
             <button
               type="button"
               onClick={(e) => {

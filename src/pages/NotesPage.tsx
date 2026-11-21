@@ -19,7 +19,7 @@ import { NoteGraph } from '@/features/notes/NoteGraph'
 import { renderMarkdown } from '@/lib/markdown'
 
 export default function NotesPage() {
-  const { notes: allNotes, loaded, softDelete } = useNoteStore()
+  const { notes: allNotes, loaded, softDelete, restore } = useNoteStore()
   const notes = useMemo(() => activeNotes(allNotes), [allNotes])
   const [search, setSearch] = useState('')
   const [modalOpen, setModalOpen] = useState(false)
@@ -208,7 +208,15 @@ export default function NotesPage() {
         confirmText="移入回收站"
         onCancel={() => setDeleteId(null)}
         onConfirm={() => {
-          if (deleteId) void softDelete(deleteId)
+          if (!deleteId) return
+          const id = deleteId
+          const target = notes.find(note => note.id === id)
+          void softDelete(id)
+            .then(() => toast.success('便签已移入回收站', target?.title || '无标题', {
+              label: '撤销',
+              run: () => void restore(id),
+            }))
+            .catch(() => { /* 失败由全局同步状态提示 */ })
           setDeleteId(null)
         }}
       />

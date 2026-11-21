@@ -4,8 +4,14 @@ import tailwindcss from '@tailwindcss/vite'
 import { VitePWA } from 'vite-plugin-pwa'
 import { fileURLToPath, URL } from 'node:url'
 
+// 部署子路径：优先级 VITE_BASE 环境变量 > GitHub Actions 自动按仓库名适配 > 默认演示路径。
+// 本地或其他托管指定路径：VITE_BASE=/自定义路径/ npm run build（以 / 开头、/ 结尾）
+const BASE = process.env.VITE_BASE
+  || (process.env.GITHUB_REPOSITORY ? `/${process.env.GITHUB_REPOSITORY.split('/')[1]}/` : '')
+  || '/nexus-workbench/'
+
 export default defineConfig({
-  base: '/nexus-workbench/',
+  base: BASE,
   plugins: [
     react(),
     tailwindcss(),
@@ -19,8 +25,8 @@ export default defineConfig({
         short_name: 'NEXUS',
         description: '任务 · 习惯 · 专注 · 笔记 · 数据,一体化的个人效率工作台',
         lang: 'zh-CN',
-        start_url: '/nexus-workbench/',
-        scope: '/nexus-workbench/',
+        start_url: BASE,
+        scope: BASE,
         display: 'standalone',
         orientation: 'any',
         theme_color: '#05080f',

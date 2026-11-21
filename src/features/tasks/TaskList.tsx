@@ -9,6 +9,7 @@ import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import { EmptyState } from '@/components/ui/EmptyState'
 import type { Task } from '@/lib/data/types'
 import { cn, formatDate, isOverdue } from '@/lib/utils'
+import { toast } from '@/stores/toastStore'
 import { useTaskStore } from '@/stores/taskStore'
 import { PRIORITY_META, STATUS_META } from './taskMeta'
 import { RescheduleDialog } from './RescheduleDialog'
@@ -22,6 +23,7 @@ export function TaskList({ tasks, onEdit }: TaskListProps) {
   const toggleDone = useTaskStore(state => state.toggleDone)
   const toggleSubtask = useTaskStore(state => state.toggleSubtask)
   const softDelete = useTaskStore(state => state.softDelete)
+  const restore = useTaskStore(state => state.restore)
   const [bulkMode, setBulkMode] = useState(false)
   const [selected, setSelected] = useState<Set<string>>(new Set())
   const [deleteId, setDeleteId] = useState<string | null>(null)
@@ -60,8 +62,16 @@ export function TaskList({ tasks, onEdit }: TaskListProps) {
             onClick={() => {
               if (!confirm(`删除选中的 ${selectedTasks.length} 项？任务会移入回收站。`)) return
               void performAction(async () => {
-                for (const task of selectedTasks) await softDelete(task.id)
+                const ids = selectedTasks.map(task => task.id)
+                for (const id of ids) await softDelete(id)
                 setSelected(new Set())
+                toast.success(`已移入回收站 ${ids.length} 项`, '可在回收站查看或彻底删除', {
+                  label: '全部撤销',
+                  run: () => void performAction(async () => {
+                    for (const id of ids) await restore(id)
+                    setNotice(`已恢复 ${ids.length} 项任务。`)
+                  }),
+                })
               })
             }}
             disabled={selectedTasks.length === 0}
@@ -205,7 +215,19 @@ export function TaskList({ tasks, onEdit }: TaskListProps) {
         confirmText="移入回收站"
         onCancel={() => setDeleteId(null)}
         onConfirm={() => {
-          if (deleteId) void performAction(() => softDelete(deleteId))
+          if (!deleteId) return
+          const id = deleteId
+          const target = tasks.find(task => task.id === id)
+          void performAction(async () => {
+            await softDelete(id)
+            toast.success('已移入回收站', target?.title ?? '任务', {
+              label: '撤销',
+              run: () => void performAction(async () => {
+                await restore(id)
+                setNotice('已恢复该任务。')
+              }),
+            })
+          })
           setDeleteId(null)
         }}
       />
