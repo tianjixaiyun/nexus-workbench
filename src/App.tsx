@@ -1,7 +1,8 @@
-import { Suspense, lazy } from 'react'
+import { Suspense, lazy, type ReactNode } from 'react'
 import { BrowserRouter, Route, Routes } from 'react-router'
 import { AppLayout } from '@/layouts/AppLayout'
 import { AuthRuntime } from '@/components/AuthRuntime'
+import { ErrorBoundary } from '@/components/ErrorBoundary'
 import { FocusRuntime } from '@/components/FocusRuntime'
 import { BackupImportDialog } from '@/components/BackupImportDialog'
 import { KonamiEgg } from '@/components/fx/KonamiEgg'
@@ -63,6 +64,16 @@ function PageFallback() {
   )
 }
 
+/** 页面容器:错误边界(单页崩溃不扩散到整站) + 骨架屏懒加载 */
+function Page({ children }: { children: ReactNode }) {
+  return <ErrorBoundary><Suspense fallback={<PageFallback />}>{children}</Suspense></ErrorBoundary>
+}
+
+/** 独立全屏页(海洋首页等)的容器:错误边界 + 全屏深色加载 */
+function FullPage({ children }: { children: ReactNode }) {
+  return <ErrorBoundary><Suspense fallback={<FullscreenFallback />}>{children}</Suspense></ErrorBoundary>
+}
+
 export default function App() {
   return (
     <BrowserRouter basename={import.meta.env.BASE_URL.replace(/\/$/, '') || '/'}>
@@ -81,27 +92,27 @@ export default function App() {
       <KonamiEgg />
       <AchievementWatcher />
       <Routes>
-        <Route path="/login" element={<Suspense fallback={<PageFallback />}><LoginPage /></Suspense>} />
+        <Route path="/login" element={<Page><LoginPage /></Page>} />
         {/* 个人网站首页:全屏海洋下潜叙事,独立于工作台外壳 */}
-        <Route path="/" element={<Suspense fallback={<FullscreenFallback />}><LandingPage /></Suspense>} />
+        <Route path="/" element={<FullPage><LandingPage /></FullPage>} />
         {/* 作品集:个人网站对外展示页,同样独立全屏 */}
-        <Route path="/portfolio" element={<Suspense fallback={<PageFallback />}><PortfolioPage /></Suspense>} />
+        <Route path="/portfolio" element={<Page><PortfolioPage /></Page>} />
         {/* 海面之上·手帐:剪贴簿风彩蛋页 */}
-        <Route path="/scrapbook" element={<Suspense fallback={<PageFallback />}><ScrapbookPage /></Suspense>} />
+        <Route path="/scrapbook" element={<Page><ScrapbookPage /></Page>} />
         <Route element={<AppLayout />}>
           {/* 工作台首屏也按需:DashboardView 的 echarts 图表不进入口静态依赖图 */}
-          <Route path="home" element={<Suspense fallback={<PageFallback />}><DashboardPage /></Suspense>} />
-          <Route path="tasks" element={<Suspense fallback={<PageFallback />}><TasksPage /></Suspense>} />
-          <Route path="goals" element={<Suspense fallback={<PageFallback />}><GoalsPage /></Suspense>} />
-          <Route path="habits" element={<Suspense fallback={<PageFallback />}><HabitsPage /></Suspense>} />
-          <Route path="focus" element={<Suspense fallback={<PageFallback />}><FocusPage /></Suspense>} />
-          <Route path="notes" element={<Suspense fallback={<PageFallback />}><NotesPage /></Suspense>} />
-          <Route path="stats" element={<Suspense fallback={<PageFallback />}><StatsPage /></Suspense>} />
-          <Route path="links" element={<Suspense fallback={<PageFallback />}><LinksPage /></Suspense>} />
-          <Route path="sanctuary" element={<Suspense fallback={<PageFallback />}><SanctuaryPage /></Suspense>} />
-          <Route path="trash" element={<Suspense fallback={<PageFallback />}><TrashPage /></Suspense>} />
-          <Route path="achievements" element={<Suspense fallback={<PageFallback />}><AchievementsPage /></Suspense>} />
-          <Route path="memos" element={<Suspense fallback={<PageFallback />}><MemosPage /></Suspense>} />
+          <Route path="home" element={<Page><DashboardPage /></Page>} />
+          <Route path="tasks" element={<Page><TasksPage /></Page>} />
+          <Route path="goals" element={<Page><GoalsPage /></Page>} />
+          <Route path="habits" element={<Page><HabitsPage /></Page>} />
+          <Route path="focus" element={<Page><FocusPage /></Page>} />
+          <Route path="notes" element={<Page><NotesPage /></Page>} />
+          <Route path="stats" element={<Page><StatsPage /></Page>} />
+          <Route path="links" element={<Page><LinksPage /></Page>} />
+          <Route path="sanctuary" element={<Page><SanctuaryPage /></Page>} />
+          <Route path="trash" element={<Page><TrashPage /></Page>} />
+          <Route path="achievements" element={<Page><AchievementsPage /></Page>} />
+          <Route path="memos" element={<Page><MemosPage /></Page>} />
           <Route path="expense" element={<Suspense fallback={<PageFallback />}><ExpensePage /></Suspense>} />
           <Route path="contacts" element={<Suspense fallback={<PageFallback />}><ContactsPage /></Suspense>} />
           <Route path="journal" element={<Suspense fallback={<PageFallback />}><JournalPage /></Suspense>} />

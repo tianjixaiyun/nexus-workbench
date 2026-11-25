@@ -28,6 +28,16 @@ if (import.meta.env.PROD && 'serviceWorker' in navigator) {
   })
 }
 
+// 版本更新后旧页面引用的懒加载 chunk 文件名会变化:预载失败时整页刷新一次
+// (每次会话只自动刷新一次,避免异常环境下无限循环;启动时重置保护标记)
+sessionStorage.removeItem('nexus:preload-reloaded')
+window.addEventListener('vite:preloadError', () => {
+  if (!sessionStorage.getItem('nexus:preload-reloaded')) {
+    sessionStorage.setItem('nexus:preload-reloaded', '1')
+    window.location.reload()
+  }
+})
+
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <App />

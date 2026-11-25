@@ -3,6 +3,7 @@ import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 import { VitePWA } from 'vite-plugin-pwa'
 import { fileURLToPath, URL } from 'node:url'
+import pkg from './package.json'
 
 // 部署子路径：优先级 VITE_BASE 环境变量 > GitHub Actions 自动按仓库名适配 > 默认演示路径。
 // 本地或其他托管指定路径：VITE_BASE=/自定义路径/ npm run build（以 / 开头、/ 结尾）
@@ -12,6 +13,10 @@ const BASE = process.env.VITE_BASE
 
 export default defineConfig({
   base: BASE,
+  define: {
+    // 设置页展示的版本号,与 package.json 同源
+    __APP_VERSION__: JSON.stringify(pkg.version),
+  },
   plugins: [
     react(),
     tailwindcss(),
@@ -43,6 +48,8 @@ export default defineConfig({
         skipWaiting: true,
         clientsClaim: true,
         cleanupOutdatedCaches: true,
+        // 离线时导航请求(含深链接如 /tasks)回退到缓存的 SPA 入口
+        navigateFallback: 'index.html',
         // ECharts 等大资源不预缓存,运行时按需缓存
         globPatterns: ['**/*.{js,css,html,svg,ico,woff2}'],
         maximumFileSizeToCacheInBytes: 3 * 1024 * 1024,
