@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { cn } from '@/lib/utils'
 import { daysUntil, useMilestoneStore } from '@/stores/milestoneStore'
+import { toast } from '@/stores/toastStore'
 
 const EMOJIS = ['🎯', '✈️', '🎂', '💑', '🎓', '🏆', '📅', '🚀', '🏖️', '📝']
 
@@ -103,7 +104,14 @@ export function MilestonesCard() {
                   {label.text}
                 </span>
                 <button
-                  onClick={() => void remove(m.id)}
+                  onClick={() => {
+                    // 删除就地可撤销:回收站不收倒数日,用原数据重新建一条
+                    void remove(m.id)
+                    toast.info('倒数日已删除', `${m.emoji} ${m.title}`, {
+                      label: '撤销',
+                      run: () => void add({ title: m.title, date: m.date, emoji: m.emoji }),
+                    })
+                  }}
                   className="hidden cursor-pointer rounded-md p-1 text-txt-muted hover:bg-rose-500/15 hover:text-danger group-hover:block"
                   aria-label="删除"
                 >

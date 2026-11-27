@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { FileDown, FileUp, Loader2, Trophy } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
+import { CountUp } from '@/components/fx/micro'
 import { Chart, chartPalette, darkChartBase } from '@/components/ui/Chart'
 import { isoToLocalDateStr, toDateStr } from '@/lib/utils'
 import { exportData } from '@/lib/backup'
@@ -350,7 +351,7 @@ export function StatsView() {
         {cards.map((c) => (
           <Card key={c.label} className="glass-card-hover p-4 text-center">
             <p className="text-xs text-txt-muted">{c.label}</p>
-            <p className="mt-1 font-mono text-2xl font-bold tabular-nums">{c.value}</p>
+            <p className="mt-1 font-mono text-2xl font-bold tabular-nums">{typeof c.value === 'number' ? <CountUp value={c.value} /> : c.value}</p>
           </Card>
         ))}
       </section>

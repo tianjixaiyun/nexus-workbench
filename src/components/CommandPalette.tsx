@@ -6,7 +6,7 @@ import {
   Search, StickyNote, Wrench, X,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { APP_MODULES, COMMAND_GROUPS, commandItemsInDisplayOrder, commandSelectionIndex } from '@/lib/modules'
+import { APP_MODULES, commandItemsInDisplayOrder, commandSelectionIndex } from '@/lib/modules'
 import { exportData } from '@/lib/backup'
 import { requestBackupImport } from '@/lib/backupImport'
 import { noteContextHref, taskContextHref } from '@/lib/contextLinks'
@@ -20,16 +20,22 @@ import { useLinkStore } from '@/stores/linkStore'
 import { useMemoStore } from '@/stores/memoStore'
 import { useWorkStore } from '@/stores/workStore'
 import { useExpenseStore } from '@/stores/expenseStore'
+import { loadRecentCommandKeys, recordRecentCommand } from '@/lib/paletteRecent'
 
 interface PaletteItem {
   key: string
-  group: typeof COMMAND_GROUPS[number]
+  group: string
   label: string
   hint?: string
   keywords: string
+  /** 右对齐快捷键角标,如 1、3（setproduct：把命令文案当产品文案） */
+  kbd?: string
   icon: React.ReactNode
   run: () => void | Promise<void>
 }
+
+/** 稳定入口(page:* / action:*)才进「最近使用」;动态条目(任务/笔记等)不记录 */
+const isStableCommandKey = (key: string) => key.startsWith('page:') || key.startsWith('action:')
 
 export function CommandPalette({ open, onClose }: { open: boolean; onClose: () => void }) {
   const navigate = useNavigate()
@@ -61,7 +67,7 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
     const go = (to: string) => { navigate(to); onClose() }
     const pages: PaletteItem[] = APP_MODULES.map(({ to, label, keywords, icon: Icon, shortcut }) => ({
       key: `page:${to}`, group: '页面', label, keywords,
-      hint: shortcut ? `快捷键 ${shortcut}` : undefined,
+      kbd: shortcut,
       icon: <Icon size={15} />, run: () => go(to),
     }))
     const actions: PaletteItem[] = [
@@ -110,6 +116,8 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
     ]
   }, [tasks, notes, links, memos, works, expenses, calmMode, navigate, onClose])
 
+  const stableItems = useMemo(() => items.filter((item) => isStableCommandKey(item.key)), [items])
+
   const results = useMemo(() => {
     const raw = query.trim()
     const kw = raw.toLowerCase()
@@ -149,11 +157,35 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
         }
       } catch { /* 未完成的算式继续作为普通搜索。 */ }
     }
-    return commandItemsInDisplayOrder([
-      ...extras,
-      ...items.filter((item) => !kw || `${item.label} ${item.keywords}`.toLowerCase().includes(kw)),
-    ])
-  }, [items, query, onClose])
+    const matches = (item: PaletteItem) => !kw || `${item.label} ${item.keywords}`.toLowerCase().includes(kw)
+    // 「最近使用」置顶:只取稳定入口,去重后交给统一排序,动态条目仍按分组展示
+    const recentItems = loadRecentCommandKeys()
+      .map((key) => stableItems.find((item) => item.key === key))
+      .filter((item): item is PaletteItem => Boolean(item && matches(item)))
+      .map((item) => ({ ...item, group: '最近使用' }))
+    const usedKeys = new Set(recentItems.map((item) => item.key))
+    return [
+      ...recentItems,
+      ...commandItemsInDisplayOrder([
+        ...extras,
+        ...items.filter((item) => !usedKeys.has(item.key) && matches(item)),
+      ]),
+    ]
+  }, [items, stableItems, query, onClose])
+
+  /** 无结果时的「就近命令」:按字符重合度从稳定入口里推 3 个,一个都不沾则给新手三步 */
+  const emptySuggestions = useMemo(() => {
+    if (results.length > 0 || !query.trim()) return []
+    const kw = query.trim().toLowerCase()
+    const ranked = [...stableItems]
+      .map((item) => ({ item, score: [...kw].filter((ch) => `${item.label}${item.keywords}`.toLowerCase().includes(ch)).length }))
+      .filter((entry) => entry.score > 0)
+      .sort((a, b) => b.score - a.score)
+      .slice(0, 3)
+      .map((entry) => entry.item)
+    if (ranked.length) return ranked
+    return stableItems.filter((item) => ['action:task', 'action:note', 'page:/home'].includes(item.key))
+  }, [stableItems, results.length, query])
 
   const selectedIndex = commandSelectionIndex(query, selection, results.length)
   useEffect(() => {
@@ -163,6 +195,7 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
   if (!open) return null
 
   const runItem = async (item: PaletteItem) => {
+    if (isStableCommandKey(item.key)) recordRecentCommand(item.key)
     try { await item.run() }
     catch (err) { setNotice(err instanceof Error ? err.message : '操作失败，请重试') }
   }
@@ -213,7 +246,29 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
           </button>
         </div>
         <div ref={listRef} id={listId} role="listbox" aria-label="搜索结果" className="min-h-0 flex-1 overflow-y-auto p-2">
-          {results.length === 0 && <p role="status" className="py-10 text-center text-sm text-txt-muted">没有匹配的结果</p>}
+          {results.length === 0 && (
+            <div role="status" className="flex flex-col items-center gap-3 py-8">
+              <p className="text-sm text-txt-muted">没有匹配「{query.trim()}」的结果</p>
+              {emptySuggestions.length > 0 && (
+                <>
+                  <div className="flex w-full max-w-xs flex-col gap-1.5">
+                    {emptySuggestions.map((item) => (
+                      <button
+                        key={item.key}
+                        type="button"
+                        onClick={() => void runItem(item)}
+                        className="flex cursor-pointer items-center gap-2 rounded-xl border border-line-2 px-3 py-2 text-left text-sm text-txt-secondary transition-colors hover:border-accent hover:text-txt-primary focus-visible:outline-2 focus-visible:outline-accent"
+                      >
+                        <span className="shrink-0 text-txt-muted" aria-hidden="true">{item.icon}</span>
+                        <span className="min-w-0 flex-1 truncate">{item.label}</span>
+                      </button>
+                    ))}
+                  </div>
+                  <p className="text-[11px] text-txt-muted">试试以上命令,或清空搜索查看全部</p>
+                </>
+              )}
+            </div>
+          )}
           {results.map((item, index) => (
             <Fragment key={item.key}>
               {(index === 0 || results[index - 1].group !== item.group) && <p role="presentation" className="px-3 pt-2 pb-1 text-[11px] tracking-wider text-txt-muted">{item.group}</p>}
@@ -230,7 +285,10 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
               >
                 <span className={cn('shrink-0', index === selectedIndex ? 'text-accent' : 'text-txt-muted')} aria-hidden="true">{item.icon}</span>
                 <span className="min-w-0 flex-1 truncate text-sm">{item.label}</span>
-                {item.hint && <span className="max-w-28 shrink-0 truncate text-xs text-txt-muted sm:max-w-40">{item.hint}</span>}
+                {item.kbd && (
+                  <kbd className="shrink-0 rounded-md border border-line-3 bg-surface-2 px-1.5 py-0.5 font-mono text-[10px] text-txt-muted" aria-label={`快捷键 ${item.kbd}`}>{item.kbd}</kbd>
+                )}
+                {!item.kbd && item.hint && <span className="max-w-28 shrink-0 truncate text-xs text-txt-muted sm:max-w-40">{item.hint}</span>}
                 {index === selectedIndex && <CornerDownLeft size={13} className="shrink-0 text-txt-muted" aria-hidden="true" />}
               </button>
             </Fragment>
@@ -238,7 +296,17 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
         </div>
         {notice && <p role="status" className="shrink-0 border-t border-line-2 px-4 py-2.5 text-xs text-accent">{notice}</p>}
         <div className="flex shrink-0 items-center justify-between gap-2 border-t border-line-2 px-4 py-2 text-[11px] text-txt-muted">
-          <span>↑↓ 选择 · Enter 确认 · Esc 关闭</span><span className="hidden sm:inline">{results.length} 个结果</span>
+          <span>↑↓ 选择 · Enter 确认 · Esc 关闭</span>
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={() => { onClose(); window.dispatchEvent(new CustomEvent('nexus:shortcuts-help')) }}
+              className="cursor-pointer rounded-md px-1.5 py-0.5 transition-colors hover:text-accent focus-visible:outline-2 focus-visible:outline-accent"
+            >
+              全部快捷键 <kbd className="rounded border border-line-3 bg-surface-2 px-1 font-mono">?</kbd>
+            </button>
+            <span className="hidden sm:inline">{results.length} 个结果</span>
+          </div>
         </div>
       </div>
     </dialog>,

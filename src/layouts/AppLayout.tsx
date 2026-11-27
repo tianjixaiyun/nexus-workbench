@@ -169,6 +169,22 @@ export function AppLayout() {
     return () => window.removeEventListener('nexus:capture', open)
   }, [])
 
+  // 命令面板 ⇄ 快捷键帮助互跳(两条入口都走全局事件)
+  useEffect(() => {
+    const openHelp = () => setHelpOpen(true)
+    const openPalette = () => {
+      if (!useAuthStore.getState().user) return
+      setHelpOpen(false)
+      setPaletteOpen(true)
+    }
+    window.addEventListener('nexus:shortcuts-help', openHelp)
+    window.addEventListener('nexus:open-palette', openPalette)
+    return () => {
+      window.removeEventListener('nexus:shortcuts-help', openHelp)
+      window.removeEventListener('nexus:open-palette', openPalette)
+    }
+  }, [])
+
   // 云端模式未登录 → 去登录页
   if (isCloudMode && ready && !user && location.pathname !== '/settings') {
     return <Navigate to="/login" replace />

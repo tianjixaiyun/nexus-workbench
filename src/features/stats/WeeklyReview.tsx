@@ -1,10 +1,12 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Moon, Sparkles } from 'lucide-react'
+import { ImageDown, Moon, Sparkles } from 'lucide-react'
 import { Card } from '@/components/ui/Card'
 import { MOODS } from '@/lib/data/types'
 import { render } from '@/lib/assistant'
 import { cn, todayStr } from '@/lib/utils'
 import { recentSessions } from '@/lib/pomodoro'
+import { buildWeekShareModel, downloadWeekShareImage } from '@/lib/weekShare'
+import { toast } from '@/stores/toastStore'
 import { todayMood, useDailyStore } from '@/stores/dailyStore'
 import { useHabitStore } from '@/stores/habitStore'
 import { useTaskStore } from '@/stores/taskStore'
@@ -69,6 +71,16 @@ export function WeeklyReviewCard() {
     return render(template, slots)
   }, [week])
 
+  // 一键生成可保存的分享图(canvas 本地绘制,不联网)
+  const handleShare = () => {
+    try {
+      downloadWeekShareImage(buildWeekShareModel(week, comment))
+      toast.success('分享图已生成', '已保存到下载目录')
+    } catch {
+      toast.error('分享图生成失败', '当前浏览器不支持 canvas 导出,可截图代替。')
+    }
+  }
+
   return (
     <Card>
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
@@ -76,7 +88,18 @@ export function WeeklyReviewCard() {
           <Sparkles size={15} className="text-accent" />
           本周回顾(自动生成)
         </p>
-        <span className="text-[11px] text-txt-muted">本周一至今天 · {week.days} 天</span>
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            onClick={handleShare}
+            className="inline-flex cursor-pointer items-center gap-1 rounded-lg border border-line-2 px-2 py-1 text-[11px] text-txt-muted transition-colors hover:border-accent hover:text-accent focus-visible:outline-2 focus-visible:outline-accent"
+            aria-label="生成本周回顾分享图"
+          >
+            <ImageDown size={13} aria-hidden="true" />
+            分享图
+          </button>
+          <span className="text-[11px] text-txt-muted">本周一至今天 · {week.days} 天</span>
+        </div>
       </div>
 
       <div className="grid grid-cols-4 gap-2">

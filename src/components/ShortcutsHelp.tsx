@@ -50,6 +50,16 @@ export function ShortcutsHelp({ open, onClose }: { open: boolean; onClose: () =>
             </div>
           </div>
         ))}
+        <div className="border-t border-line-2 pt-4">
+          <button
+            type="button"
+            onClick={() => { onClose(); window.dispatchEvent(new CustomEvent('nexus:open-palette')) }}
+            className="inline-flex cursor-pointer items-center gap-2 rounded-xl border border-line-2 px-3 py-2 text-xs text-txt-secondary transition-colors hover:border-accent hover:text-accent focus-visible:outline-2 focus-visible:outline-accent"
+          >
+            去命令面板直接运行
+            <kbd className="rounded border border-line-3 bg-surface-2 px-1.5 py-0.5 font-mono text-[10px]">Ctrl K</kbd>
+          </button>
+        </div>
       </div>
     </Modal>
   )
